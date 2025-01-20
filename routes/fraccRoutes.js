@@ -1,8 +1,13 @@
 const express = require("express");
-const { addFraccionamiento } = require("../controllers/fraccControllers");
+const {
+  addFraccUser,
+  loginFraccUser,
+} = require("../controllers/fraccController");
 
 const router = express.Router();
 
-router.post("/add", addFraccionamiento);
+router.post("/add", addFraccUser);
+
+router.post("/login", loginFraccUser);
 
 module.exports = router;

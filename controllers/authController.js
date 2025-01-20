@@ -1,29 +1,31 @@
-const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
-const User = require("../models/userModels");
+const Admin = require("../models/fraccUserModels");
 
-exports.login = async (req, res) => {
-  const { email, password } = req.body;
+exports.registerAdmin = async (req, res) => {
+  const { usuario, correo, contrasena, fraccionamiento } = req.body;
 
   try {
-    const user = await User.findOne({ email });
-    if (!user)
-      return res.status(404).json({ message: "Usuario no encontrado" });
+    const adminExists = await Admin.findOne({ correo });
+    if (adminExists) {
+      return res.status(400).json({ message: "El correo ya está en uso" });
+    }
 
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch)
-      return res.status(401).json({ message: "Contraseña incorrecta" });
+    const newAdmin = new Admin({
+      usuario,
+      correo,
+      contrasena,
+      fraccionamiento,
+    });
 
-    const token = jwt.sign(
-      { id: user._id, role: user.role },
-      process.env.JWT_SECRET,
-      {
-        expiresIn: "1d",
-      }
-    );
+    await newAdmin.save();
 
-    res.status(200).json({ token, user });
+    res.status(201).json({
+      message: "Administrador registrado con éxito",
+      admin: newAdmin,
+    });
   } catch (error) {
-    res.status(500).json({ message: "Error en el servidor", error });
+    console.error("Error al registrar administrador:", error.message);
+    res
+      .status(500)
+      .json({ message: "Error en el servidor", error: error.message });
   }
 };

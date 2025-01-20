@@ -1,16 +1,14 @@
 const express = require("express");
 const dotenv = require("dotenv");
-const connectDB = require("./config/database"); // Asegúrate de que la ruta sea correcta
+const connectDB = require("./config/database");
 
 dotenv.config();
-connectDB(); // Llama a la función para conectar a la base de datos
+connectDB();
 
 const app = express();
-app.use(express.json()); // Middleware para leer JSON
+app.use(express.json());
 
-// Rutas
-app.use("/api/fracc", require("./routes/fraccRoutes"));
+app.use("/api/auth", require("./routes/authRoutes"));
 
-// Puerto
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Servidor corriendo en el puerto ${PORT}`));
