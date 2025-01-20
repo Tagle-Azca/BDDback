@@ -10,9 +10,15 @@ const fraccUserSchema = new mongoose.Schema({
   },
   correo: {
     type: String,
-    required: true,
+    required: false,
     unique: true,
     lowercase: true,
+    trim: true,
+  },
+  telefono: {
+    type: String,
+    required: false,
+    unique: true,
     trim: true,
   },
   contrasena: {
@@ -22,6 +28,10 @@ const fraccUserSchema = new mongoose.Schema({
   fraccionamiento: {
     type: String,
     required: true,
+  },
+  Estado: {
+    type: string,
+    default: "activo",
   },
   qr: {
     type: String,
