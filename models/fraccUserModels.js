@@ -30,7 +30,7 @@ const fraccUserSchema = new mongoose.Schema({
     required: true,
   },
   Estado: {
-    type: string,
+    type: String,
     default: "activo",
   },
   qr: {
