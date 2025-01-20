@@ -51,7 +51,3 @@ jspm_packages/
 ._*
 .Spotlight-V100
 .Trashes
-
-# Ignore package files
-package.json
-package-lock.json
