@@ -6,7 +6,6 @@ const router = express.Router();
 router.post("/register-house", async (req, res) => {
   const { fraccionamiento, casaDatos } = req.body;
 
-  // Verifica que los datos requeridos estén presentes
   if (
     !fraccionamiento ||
     !casaDatos ||
@@ -19,7 +18,6 @@ router.post("/register-house", async (req, res) => {
     });
   }
 
-  // Llama al controlador
   const result = await registerHouse(fraccionamiento, casaDatos);
 
   if (result.error) {
