@@ -52,9 +52,15 @@ const fraccUserSchema = new mongoose.Schema({
 });
 
 fraccUserSchema.pre("save", async function (next) {
-  if (!this.isModified("contrasena")) return next();
-  const salt = await bcrypt.genSalt(10);
-  this.contrasena = await bcrypt.hash(this.contrasena, salt);
+  if (this.fraccionamiento) {
+    this.fraccionamiento = this.fraccionamiento.toLowerCase();
+  }
+
+  if (this.isModified("contrasena")) {
+    const salt = await bcrypt.genSalt(10);
+    this.contrasena = await bcrypt.hash(this.contrasena, salt);
+  }
+
   next();
 });
 

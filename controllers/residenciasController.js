@@ -1,38 +1,43 @@
-const express = require("express");
-const router = express.Router();
 const Admin = require("../models/fraccUserModels");
 const Residencias = require("../models/Residencias");
 const { v4: uuidv4 } = require("uuid");
 
 const registerHouse = async (fraccionamiento, casaDatos) => {
   try {
-    console.log("Buscando fraccionamiento:", fraccionamiento);
-    const fraccionamiento = await Admin.findOne({
-      fraccionamiento: {
-        $regex: new RegExp(`^${fraccionamiento}$`, "i"),
-      },
+    const nombreEnMinusculas = fraccionamiento.toLowerCase();
+    console.log(
+      "Nombre del fraccionamiento convertido a minúsculas:",
+      nombreEnMinusculas
+    );
+
+    const fraccionamientoEncontrado = await Admin.findOne({
+      fraccionamiento: nombreEnMinusculas,
     });
 
-    if (!fraccionamiento) {
+    if (!fraccionamientoEncontrado) {
       return {
         error: `El fraccionamiento "${fraccionamiento}" no existe en la base de datos.`,
       };
     }
 
-    console.log("fraccionamiento encontrado:", fraccionamiento);
+    console.log("Fraccionamiento encontrado:", fraccionamientoEncontrado);
 
+    // Agregar IDs únicos a cada residente
     const residentesConId = casaDatos.residentes.map((residente) => ({
-      ...residente,
+      nombre: residente.nombre,
+      edad: residente.edad || null,
       residenteId: uuidv4(),
     }));
 
+    // Crear la nueva residencia
     const nuevaResidencia = new Residencias({
-      fraccionamientoId: fraccionamiento._id,
-      fraccionamiento: fraccionamiento.fraccionamiento,
+      fraccionamientoId: fraccionamientoEncontrado._id,
+      fraccionamiento: fraccionamientoEncontrado.fraccionamiento,
       direccion: casaDatos.direccion,
       residentes: residentesConId,
     });
 
+    // Guardar la residencia en la colección residencias
     await nuevaResidencia.save();
 
     return {

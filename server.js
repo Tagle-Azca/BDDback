@@ -1,14 +1,30 @@
+require("dotenv").config();
 const express = require("express");
-const dotenv = require("dotenv");
-const connectDB = require("./config/database");
-
-dotenv.config();
-connectDB();
+const mongoose = require("mongoose");
+const residenciasRoutes = require("./routes/residenciasRoutes");
+const authRoutes = require("./routes/authRoutes");
 
 const app = express();
 app.use(express.json());
 
-app.use("/api/auth", require("./routes/authRoutes"));
+const MONGO_URI = process.env.MONGO_URI;
 
-const PORT = process.env.PORT || 5000;
+if (!MONGO_URI) {
+  console.error(
+    "Error: La URI de conexión a MongoDB no está definida en el archivo .env"
+  );
+  process.exit(1);
+}
+
+mongoose
+  .connect(MONGO_URI)
+  .then(() => console.log("Conectado a MongoDB"))
+  .catch((err) => {
+    console.error("Error conectando a MongoDB:", err);
+    process.exit(1);
+  });
+app.use("/api/residencias", residenciasRoutes);
+app.use("/api/auth", authRoutes);
+
+const PORT = process.env.PORT || 5002;
 app.listen(PORT, () => console.log(`Servidor corriendo en el puerto ${PORT}`));
