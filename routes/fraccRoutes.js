@@ -1,48 +1,51 @@
 const express = require("express");
-const router = express.Router();
 const Admin = require("../models/fraccUserModels");
-const Residencias = require("../models/Residencias");
-const { v4: uuidv4 } = require("uuid");
 
-const registerHouse = async (fraccionamiento, casaDatos) => {
-  try {
-    console.log("Buscando fraccionamiento:", fraccionamiento);
-    const fraccionamiento = await Admin.findOne({
-      fraccionamiento: {
-        $regex: new RegExp(`^${fraccionamiento}$`, "i"),
-      },
+const router = express.Router();
+
+router.post("/add", async (req, res) => {
+  const { usuario, correo, contrasena, fraccionamiento } = req.body;
+
+  if (!usuario || !correo || !contrasena || !fraccionamiento) {
+    return res.status(400).json({
+      error:
+        "Faltan datos obligatorios: usuario, correo, contrasena, fraccionamiento",
     });
-
-    if (!fraccionamiento) {
-      return {
-        error: `El fraccionamiento "${fraccionamiento}" no existe en la base de datos.`,
-      };
-    }
-
-    console.log("fraccionamiento encontrado:", fraccionamiento);
-
-    const residentesConId = casaDatos.residentes.map((residente) => ({
-      ...residente,
-      residenteId: uuidv4(),
-    }));
-
-    const nuevaResidencia = new Residencias({
-      fraccionamientoId: fraccionamiento._id,
-      fraccionamiento: fraccionamiento.fraccionamiento,
-      direccion: casaDatos.direccion,
-      residentes: residentesConId,
-    });
-
-    await nuevaResidencia.save();
-
-    return {
-      success: "Residencia registrada exitosamente",
-      residencia: nuevaResidencia,
-    };
-  } catch (error) {
-    console.error("Error registrando la residencia:", error);
-    return { error: "Ocurrió un error al registrar la residencia." };
   }
-};
 
-module.exports = { registerHouse };
+  try {
+    const nuevoFraccionamiento = new Admin({
+      usuario,
+      correo,
+      contrasena,
+      fraccionamiento: fraccionamiento.toLowerCase(),
+    });
+
+    await nuevoFraccionamiento.save();
+    return res
+      .status(201)
+      .json({
+        success: "Fraccionamiento agregado exitosamente",
+        data: nuevoFraccionamiento,
+      });
+  } catch (error) {
+    console.error("Error agregando el fraccionamiento:", error);
+    return res
+      .status(500)
+      .json({ error: "Error al agregar el fraccionamiento" });
+  }
+});
+
+router.get("/", async (req, res) => {
+  try {
+    const fraccionamientos = await Admin.find();
+    return res.status(200).json(fraccionamientos);
+  } catch (error) {
+    console.error("Error obteniendo los fraccionamientos:", error);
+    return res
+      .status(500)
+      .json({ error: "Error al obtener los fraccionamientos" });
+  }
+});
+
+module.exports = router;

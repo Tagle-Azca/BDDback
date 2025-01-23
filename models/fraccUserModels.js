@@ -27,6 +27,7 @@ const fraccUserSchema = new mongoose.Schema({
   },
   fraccionamiento: {
     type: String,
+    unique: true,
     required: true,
   },
   Estado: {

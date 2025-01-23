@@ -5,10 +5,6 @@ const { v4: uuidv4 } = require("uuid");
 const registerHouse = async (fraccionamiento, casaDatos) => {
   try {
     const nombreEnMinusculas = fraccionamiento.toLowerCase();
-    console.log(
-      "Nombre del fraccionamiento convertido a minúsculas:",
-      nombreEnMinusculas
-    );
 
     const fraccionamientoEncontrado = await Admin.findOne({
       fraccionamiento: nombreEnMinusculas,
@@ -22,27 +18,29 @@ const registerHouse = async (fraccionamiento, casaDatos) => {
 
     console.log("Fraccionamiento encontrado:", fraccionamientoEncontrado);
 
-    // Agregar IDs únicos a cada residente
-    const residentesConId = casaDatos.residentes.map((residente) => ({
+    const nuevosResidentes = casaDatos.residentes.map((residente) => ({
       nombre: residente.nombre,
       edad: residente.edad || null,
-      residenteId: uuidv4(),
+      residenteId: uuidv4(), // Generar un ID único para cada residente
     }));
 
-    // Crear la nueva residencia
-    const nuevaResidencia = new Residencias({
-      fraccionamientoId: fraccionamientoEncontrado._id,
-      fraccionamiento: fraccionamientoEncontrado.fraccionamiento,
-      direccion: casaDatos.direccion,
-      residentes: residentesConId,
-    });
-
-    // Guardar la residencia en la colección residencias
-    await nuevaResidencia.save();
+    const residenciaActualizada = await Residencias.findOneAndUpdate(
+      {
+        fraccionamientoId: fraccionamientoEncontrado._id,
+        direccion: casaDatos.direccion,
+      },
+      {
+        $set: { fraccionamiento: fraccionamientoEncontrado.fraccionamiento },
+        $addToSet: {
+          residentes: { $each: nuevosResidentes },
+        },
+      },
+      { new: true, upsert: true }
+    );
 
     return {
-      success: "Residencia registrada exitosamente",
-      residencia: nuevaResidencia,
+      success: "Residencia actualizada exitosamente",
+      residencia: residenciaActualizada,
     };
   } catch (error) {
     console.error("Error registrando la residencia:", error);
