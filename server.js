@@ -4,6 +4,7 @@ const mongoose = require("mongoose");
 const residenciasRoutes = require("./routes/residenciasRoutes");
 const authRoutes = require("./routes/authRoutes");
 const fraccRoutes = require("./routes/fraccRoutes");
+const register = require("./routes/authRoutes");
 
 const app = express();
 app.use(express.json());
@@ -27,6 +28,7 @@ mongoose
 app.use("/api/residencias", residenciasRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/fracc", fraccRoutes);
+app.use("/api/register", register);
 
 const PORT = process.env.PORT || 5002;
 app.listen(PORT, () => console.log(`Servidor corriendo en el puerto ${PORT}`));
