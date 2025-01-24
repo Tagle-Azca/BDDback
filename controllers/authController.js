@@ -38,7 +38,6 @@ const loginUser = async (req, res) => {
   }
 };
 
-// Lógica de Registro
 const registerUser = async (req, res) => {
   const { correo, contrasena } = req.body;
 

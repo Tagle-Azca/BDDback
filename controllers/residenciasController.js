@@ -21,7 +21,7 @@ const registerHouse = async (fraccionamiento, casaDatos) => {
     const nuevosResidentes = casaDatos.residentes.map((residente) => ({
       nombre: residente.nombre,
       edad: residente.edad || null,
-      residenteId: uuidv4(), // Generar un ID único para cada residente
+      residenteId: uuidv4(),
     }));
 
     const residenciaActualizada = await Residencias.findOneAndUpdate(

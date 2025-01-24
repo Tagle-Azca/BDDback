@@ -27,4 +27,16 @@ router.post("/register-house", async (req, res) => {
   return res.status(201).json(result);
 });
 
+router.get("house", async (req, res) => {
+  try {
+    const residencias = await Residencias.find();
+    res.status(200).json(residencias);
+  } catch (error) {
+    console.error("Error al obtener las residencias:", error);
+    return res.status(500).json({
+      error: "Error al obtener las residencias",
+    });
+  }
+});
+
 module.exports = router;

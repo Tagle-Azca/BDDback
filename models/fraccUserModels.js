@@ -23,7 +23,7 @@ const fraccUserSchema = new mongoose.Schema({
   },
   contrasena: {
     type: String,
-    required: true,
+    required: false,
   },
   fraccionamiento: {
     type: String,
@@ -58,6 +58,9 @@ fraccUserSchema.pre("save", async function (next) {
   }
 
   if (this.isModified("contrasena")) {
+    if (!this.contrasena) {
+      return next(new Error("La contraseña no puede estar vacía."));
+    }
     const salt = await bcrypt.genSalt(10);
     this.contrasena = await bcrypt.hash(this.contrasena, salt);
   }
