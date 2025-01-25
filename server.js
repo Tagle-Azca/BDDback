@@ -14,15 +14,17 @@ const allowedOrigins = [
   "http://localhost:3000",
   "https://ingresos-lime.vercel.app",
 ];
+
 app.use(
   cors({
     origin: (origin, callback) => {
       if (!origin || allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
-        callback(new Error("Not allowed by CORS"));
+        callback(new Error("No permitido por CORS"));
       }
     },
+    methods: ["GET", "POST", "PUT", "DELETE"],
     credentials: true,
   })
 );
