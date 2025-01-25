@@ -52,16 +52,10 @@ router.get("/fraccionamientos", async (req, res) => {
 
 router.put("/update/:id", async (req, res) => {
   const { id } = req.params;
-  const { usuario, correo, contrasena, fraccionamiento, Estado } = req.body;
+  const { usuario, correo, contrasena, fraccionamiento } = req.body;
 
   try {
-    let updateFields = {
-      usuario,
-      correo,
-      fraccionamiento: fraccionamiento?.toLowerCase(),
-      Estado,
-    };
-
+    let updateFields = { usuario, correo, fraccionamiento };
     if (contrasena) {
       const salt = await bcrypt.genSalt(10);
       updateFields.contrasena = await bcrypt.hash(contrasena, salt);
@@ -70,10 +64,7 @@ router.put("/update/:id", async (req, res) => {
     const fraccionamientoActualizado = await Admin.findByIdAndUpdate(
       id,
       updateFields,
-      {
-        new: true,
-        runValidators: true,
-      }
+      { new: true, runValidators: false }
     );
 
     if (!fraccionamientoActualizado) {
@@ -86,7 +77,7 @@ router.put("/update/:id", async (req, res) => {
     });
   } catch (error) {
     console.error("Error al actualizar el fraccionamiento:", error);
-    return res
+    res
       .status(500)
       .json({ error: "Error interno al actualizar el fraccionamiento" });
   }
