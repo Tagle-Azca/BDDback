@@ -12,7 +12,7 @@ const app = express();
 
 const allowedOrigins = [
   "http://localhost:3000",
-  "https://ingresos-lime.vercel.app",
+  "https://ingresos-kappa.vercel.app/",
 ];
 
 app.use(
