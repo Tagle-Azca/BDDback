@@ -12,18 +12,12 @@ const app = express();
 
 const allowedOrigins = [
   "http://localhost:3000",
-  "https://ingresos-kappa.vercel.app/",
+  "https://ingresos-kappa.vercel.app",
 ];
 
 app.use(
   cors({
-    origin: (origin, callback) => {
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error("No permitido por CORS"));
-      }
-    },
+    origin: true,
     methods: ["GET", "POST", "PUT", "DELETE"],
     credentials: true,
   })

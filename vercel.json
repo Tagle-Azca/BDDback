@@ -6,7 +6,7 @@
         { "key": "Access-Control-Allow-Credentials", "value": "true" },
         {
           "key": "Access-Control-Allow-Origin",
-          "value": "https://ingresos-kappa.vercel.app/"
+          "value": "https://ingresos-kappa.vercel.app"
         },
         {
           "key": "Access-Control-Allow-Methods",
