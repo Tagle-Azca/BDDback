@@ -1,8 +1,7 @@
 const express = require("express");
-const { registerHouse } = require("../controllers/residenciasController");
-
+const { v4: uuidv4 } = require("uuid");
+const Residencias = require("../models/Residencias");
 const router = express.Router();
-
 router.post("/register-house", async (req, res) => {
   const { fraccionamiento, casaDatos } = req.body;
 
@@ -29,7 +28,7 @@ router.post("/register-house", async (req, res) => {
 
 router.get("house", async (req, res) => {
   try {
-    const residencias = await Residencias.find();
+    const residencias = await residencias.find();
     res.status(200).json(residencias);
   } catch (error) {
     console.error("Error al obtener las residencias:", error);
@@ -39,4 +38,57 @@ router.get("house", async (req, res) => {
   }
 });
 
+router.put("/update-residentes/:id", async (req, res) => {
+  const { id } = req.params;
+  const { residentes } = req.body;
+
+  if (!residentes || !Array.isArray(residentes)) {
+    return res.status(400).json({
+      error: "El campo 'residentes' es obligatorio y debe ser un array.",
+    });
+  }
+
+  try {
+    const residencia = await Residencias.findById(id);
+    if (!residencia) {
+      return res.status(404).json({ error: "Residencia no encontrada." });
+    }
+
+    const residentesActualizados = residencia.residentes.map(
+      (residenteExistente) => {
+        const datosNuevos = residentes.find(
+          (r) => r._id === residenteExistente._id.toString()
+        );
+        if (datosNuevos) {
+          return {
+            ...residenteExistente.toObject(),
+            ...datosNuevos,
+          };
+        }
+        return residenteExistente;
+      }
+    );
+
+    const nuevosResidentes = residentes
+      .filter((r) => !r._id)
+      .map((r) => ({
+        ...r,
+        _id: undefined,
+      }));
+
+    residencia.residentes = [...residentesActualizados, ...nuevosResidentes];
+
+    await residencia.save();
+
+    res.status(200).json({
+      success: "Residentes actualizados exitosamente",
+      data: residencia,
+    });
+  } catch (error) {
+    console.error("Error al actualizar los residentes:", error);
+    res
+      .status(500)
+      .json({ error: "Ocurrió un error al actualizar los residentes." });
+  }
+});
 module.exports = router;
