@@ -26,9 +26,9 @@ router.post("/register-house", async (req, res) => {
   return res.status(201).json(result);
 });
 
-router.get("house", async (req, res) => {
+router.get("/get-house", async (req, res) => {
   try {
-    const residencias = await residencias.find();
+    const residencias = await Residencias.find();
     res.status(200).json(residencias);
   } catch (error) {
     console.error("Error al obtener las residencias:", error);
@@ -72,8 +72,9 @@ router.put("/update-residentes/:id", async (req, res) => {
     const nuevosResidentes = residentes
       .filter((r) => !r._id)
       .map((r) => ({
-        ...r,
-        _id: undefined,
+        nombre: r.nombre,
+        edad: r.edad,
+        telefono: r.telefono,
       }));
 
     residencia.residentes = [...residentesActualizados, ...nuevosResidentes];
@@ -86,9 +87,10 @@ router.put("/update-residentes/:id", async (req, res) => {
     });
   } catch (error) {
     console.error("Error al actualizar los residentes:", error);
-    res
-      .status(500)
-      .json({ error: "Ocurrió un error al actualizar los residentes." });
+    res.status(500).json({
+      error: "Ocurrió un error al actualizar los residentes.",
+    });
   }
 });
+
 module.exports = router;
