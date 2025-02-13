@@ -11,7 +11,7 @@ const app = express();
 
 const allowedOrigins = [
   "http://localhost:3000",
-  "https://ingresos-kappa.vercel.app",
+  "https://admin-one-livid.vercel.app",
   "https://ingresosbackend.onrender.com",
 ];
 
