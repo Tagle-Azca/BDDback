@@ -12,6 +12,7 @@ const app = express();
 const allowedOrigins = [
   "http://localhost:3000",
   "https://ingresos-kappa.vercel.app",
+  "https://ingresosbackend.onrender.com",
 ];
 
 app.use(
@@ -46,4 +47,7 @@ app.use("/api/fracc", fraccRoutes);
 app.use("/api/residencias", residenciasRoutes);
 
 const PORT = process.env.PORT || 5002;
-app.listen(PORT, () => console.log(`Servidor corriendo en el puerto ${PORT}`));
+
+app.listen(PORT, "0.0.0.0", () =>
+  console.log(`Servidor corriendo en el puerto ${PORT}`)
+);
