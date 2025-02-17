@@ -14,7 +14,7 @@ const fraccUserSchema = new mongoose.Schema({
   contrasena: { type: String, required: true },
   fraccionamiento: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "Fraccionamiento", // Relacionando con la colección de fraccionamientos
+    ref: "Fraccionamiento",
     required: true,
   },
   estado: { type: String, default: "activo" },
@@ -30,7 +30,6 @@ const fraccUserSchema = new mongoose.Schema({
   },
 });
 
-// Middleware para encriptar la contraseña antes de guardar
 fraccUserSchema.pre("save", async function (next) {
   if (this.isModified("contrasena")) {
     if (!this.contrasena) {
@@ -42,7 +41,6 @@ fraccUserSchema.pre("save", async function (next) {
   next();
 });
 
-// Método para comparar contraseñas en login
 fraccUserSchema.methods.compararContrasena = async function (inputPassword) {
   return bcrypt.compare(inputPassword, this.contrasena);
 };

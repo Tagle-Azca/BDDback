@@ -14,28 +14,40 @@ router.get("/", async (req, res) => {
 });
 
 router.post("/add", async (req, res) => {
-  const { nombre, direccion } = req.body;
-
-  if (!nombre || !direccion) {
-    return res
-      .status(400)
-      .json({ error: "Nombre y dirección son obligatorios." });
-  }
-
   try {
-    const nuevoFracc = new Fraccionamiento({
+    const { nombre, usuario, contrasena, direccion, correo, telefono, estado } =
+      req.body;
+
+    if (
+      !nombre ||
+      !usuario ||
+      !contrasena ||
+      !direccion ||
+      !correo ||
+      !telefono
+    ) {
+      return res
+        .status(400)
+        .json({ error: "Todos los campos son obligatorios" });
+    }
+
+    const nuevoFraccionamiento = new Fraccionamiento({
       nombre,
+      usuario,
+      contrasena,
       direccion,
-      casas: [],
-      secciones: [],
+      correo,
+      telefono,
+      estado: estado || "activo",
     });
-    await nuevoFracc.save();
+
+    await nuevoFraccionamiento.save();
     res.status(201).json({
-      success: "Fraccionamiento agregado exitosamente",
-      data: nuevoFracc,
+      mensaje: "Fraccionamiento agregado con éxito",
+      data: nuevoFraccionamiento,
     });
   } catch (error) {
-    console.error("Error al agregar el fraccionamiento:", error);
+    console.error("❌ Error al agregar fraccionamiento:", error);
     res.status(500).json({ error: "Error interno del servidor" });
   }
 });
@@ -118,11 +130,11 @@ router.put("/update/:id", async (req, res) => {
     }
 
     console.log(
-      "✅ Fraccionamiento actualizado en la base de datos:",
+      "✅raccionamiento actualizado en la base de datos:",
       updatedFraccionamiento
     );
     res.json({
-      mensaje: "✅ Fraccionamiento actualizado",
+      mensaje: "Fraccionamiento actualizado",
       data: updatedFraccionamiento,
     });
   } catch (error) {
