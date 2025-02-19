@@ -112,34 +112,41 @@ router.put("/update/:id", async (req, res) => {
   const updateData = req.body;
 
   if (!mongoose.Types.ObjectId.isValid(id)) {
-    return res.status(400).json({ mensaje: "ID no válido" });
+    return res.status(400).json({ mensaje: "❌ ID no válido" });
   }
 
-  console.log("ID recibido:", id);
-  console.log("Datos recibidos para actualizar:", updateData);
+  console.log("🆔 ID recibido:", id);
+  console.log("📥 Datos recibidos para actualizar:", updateData);
 
   try {
+    // 📌 Solo hashear la contraseña si el usuario la modificó
+    if (updateData.contrasena && updateData.contrasena.trim() !== "") {
+      const salt = await bcrypt.genSalt(10);
+      updateData.contrasena = await bcrypt.hash(updateData.contrasena, salt);
+    } else {
+      delete updateData.contrasena; // No modificar la contraseña si está vacía
+    }
+
     const updatedFraccionamiento = await Fraccionamiento.findByIdAndUpdate(
       id,
-      updateData,
+      { $set: updateData },
       { new: true, runValidators: true }
     );
 
     if (!updatedFraccionamiento) {
-      return res.status(404).json({ mensaje: "Fraccionamiento no encontrado" });
+      return res
+        .status(404)
+        .json({ mensaje: "❌ Fraccionamiento no encontrado" });
     }
 
-    console.log(
-      "✅raccionamiento actualizado en la base de datos:",
-      updatedFraccionamiento
-    );
+    console.log("✅ Fraccionamiento actualizado:", updatedFraccionamiento);
     res.json({
-      mensaje: "Fraccionamiento actualizado",
+      mensaje: "✅ Fraccionamiento actualizado correctamente",
       data: updatedFraccionamiento,
     });
   } catch (error) {
-    console.error("Error actualizando fraccionamiento:", error);
-    res.status(500).json({ mensaje: "Error interno del servidor" });
+    console.error("❌ Error actualizando fraccionamiento:", error);
+    res.status(500).json({ mensaje: "❌ Error interno del servidor" });
   }
 });
 
