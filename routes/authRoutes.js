@@ -1,95 +1,67 @@
 const express = require("express");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-const mongoose = require("mongoose");
-const Admin = require("../models/fraccUserModels");
-const Fraccionamiento = require("../models/fraccionamiento");
+const Admin = require("../models/admin");
+const FraccAdmin = require("../models/fraccionamientoAdmin");
 
 const router = express.Router();
 
 router.post("/login", async (req, res) => {
-  const { correo, contrasena } = req.body;
-
   try {
-    const admin = await Admin.findOne({ correo }).populate("fraccionamiento");
+    const { correo, contrasena } = req.body;
 
-    if (!admin) {
-      return res.status(400).json({ mensaje: "Usuario no encontrado" });
+    let usuario = await Admin.findOne({ correo });
+
+    if (usuario) {
+      const isMatch = await bcrypt.compare(contrasena, usuario.contrasena);
+      if (!isMatch) {
+        return res.status(400).json({ error: "Contraseña incorrecta" });
+      }
+
+      const token = jwt.sign(
+        { id: usuario._id, rol: usuario.rol },
+        process.env.JWT_SECRET,
+        { expiresIn: "1h" }
+      );
+
+      return res.json({
+        message: "Login exitoso",
+        token,
+        role: "superadmin",
+        redirect: "/admin",
+      });
     }
 
-    const esValido = await admin.compararContrasena(contrasena);
-    if (!esValido) {
-      return res.status(400).json({ mensaje: "Contraseña incorrecta" });
+    usuario = await FraccAdmin.findOne({ correo });
+
+    if (!usuario) {
+      return res.status(404).json({ error: "Usuario no encontrado" });
+    }
+
+    const isMatch = await bcrypt.compare(contrasena, usuario.contrasena);
+    if (!isMatch) {
+      return res.status(400).json({ error: "Contraseña incorrecta" });
     }
 
     const token = jwt.sign(
-      { id: admin._id, fraccionamiento: admin.fraccionamiento._id },
+      {
+        id: usuario._id,
+        rol: "admin",
+        fraccionamientoId: usuario.fraccionamientoId,
+      },
       process.env.JWT_SECRET,
-      { expiresIn: "24h" }
+      { expiresIn: "1h" }
     );
 
     res.json({
+      message: "Login exitoso",
       token,
-      usuario: admin.usuario,
-      fraccionamiento: {
-        _id: admin.fraccionamiento._id,
-        nombre: admin.fraccionamiento.nombre,
-        direccion: admin.fraccionamiento.direccion,
-      },
+      role: "admin",
+      redirect: `/dashboard/:id${usuario.fraccionamientoId}`,
     });
   } catch (error) {
-    console.error("Error en login:", error);
-    res.status(500).json({ mensaje: "Error interno del servidor" });
-  }
-});
-
-router.post("/register", async (req, res) => {
-  const { usuario, correo, contrasena, fraccionamientoNombre } = req.body;
-
-  console.log("Datos recibidos en el backend:", {
-    usuario,
-    correo,
-    contrasena,
-    fraccionamientoNombre,
-  });
-
-  try {
-    if (!fraccionamientoNombre) {
-      return res
-        .status(400)
-        .json({ mensaje: "El nombre del fraccionamiento es requerido" });
-    }
-
-    let fraccionamiento = await Fraccionamiento.findOne({
-      nombre: fraccionamientoNombre,
-    });
-
-    if (!fraccionamiento) {
-      fraccionamiento = new Fraccionamiento({
-        nombre: fraccionamientoNombre,
-        direccion: "Dirección por defecto",
-      });
-
-      await fraccionamiento.save();
-    }
-
-    const nuevoAdmin = new Admin({
-      usuario,
-      correo,
-      contrasena,
-      fraccionamiento: fraccionamiento._id,
-    });
-
-    await nuevoAdmin.save();
-
-    res.status(201).json({
-      mensaje: "Administrador registrado con éxito",
-      administrador: nuevoAdmin,
-      fraccionamiento: fraccionamiento,
-    });
-  } catch (error) {
-    console.error("Error registrando administrador:", error);
-    res.status(500).json({ mensaje: "Error interno del servidor" });
+    console.error("Error en el login:", error);
+    res.status(500).json({ error: "Error en el servidor" });
   }
 });
 

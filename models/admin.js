@@ -1,17 +1,9 @@
-const fraccAdminSchema = new mongoose.Schema({
-  usuario: { type: String, required: true, trim: true },
-  correo: {
-    type: String,
-    required: true,
-    unique: true,
-    lowercase: true,
-    trim: true,
-  },
+const mongoose = require("mongoose");
+
+const adminSchema = new mongoose.Schema({
+  usuario: { type: String, required: true, unique: true, trim: true },
   contrasena: { type: String, required: true },
-  fraccionamientoId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Fraccionamiento",
-    required: true,
-  },
-  estado: { type: String, default: "activo" },
+  rol: { type: String, default: "superadmin" }, // Solo Super Admin aquí
 });
+
+module.exports = mongoose.model("Admin", adminSchema);

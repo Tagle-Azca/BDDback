@@ -1,15 +1,18 @@
 const mongoose = require("mongoose");
 
-const connectDB = async () => {
-  try {
-    const conn = await mongoose.connect(process.env.MONGO_URI, {
-      useNewUrlParser: true,
-    });
-    console.log(`Conectado a MongoDB: ${conn.connection.host}`);
-  } catch (error) {
-    console.error(`Error al conectar a MongoDB: ${error.message}`);
-    process.exit(1);
+// Conectar al cluster de fraccionamientos
+const fraccionamientoDB = mongoose.createConnection(
+  process.env.MONGO_URI_FRACCIONAMIENTO,
+  {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
   }
-};
+);
 
-module.exports = connectDB;
+// Conectar al cluster de administradores
+const adminDB = mongoose.createConnection(process.env.MONGO_URI_ADMINESKAYSER, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+});
+
+module.exports = { fraccionamientoDB, adminDB };

@@ -3,57 +3,8 @@ const Fraccionamiento = require("../models/fraccionamiento");
 
 const router = express.Router();
 
-router.get("/", async (req, res) => {
-  try {
-    const fraccionamientos = await Fraccionamiento.find();
-    res.status(200).json(fraccionamientos);
-  } catch (error) {
-    console.error("Error al obtener los fraccionamientos:", error);
-    res.status(500).json({ error: "Error interno del servidor" });
-  }
-});
-
-router.post("/add", async (req, res) => {
-  try {
-    const { nombre, usuario, contrasena, direccion, correo, telefono, estado } =
-      req.body;
-
-    if (
-      !nombre ||
-      !usuario ||
-      !contrasena ||
-      !direccion ||
-      !correo ||
-      !telefono
-    ) {
-      return res
-        .status(400)
-        .json({ error: "Todos los campos son obligatorios" });
-    }
-
-    const nuevoFraccionamiento = new Fraccionamiento({
-      nombre,
-      usuario,
-      contrasena,
-      direccion,
-      correo,
-      telefono,
-      estado: estado || "activo",
-    });
-
-    await nuevoFraccionamiento.save();
-    res.status(201).json({
-      mensaje: "Fraccionamiento agregado con éxito",
-      data: nuevoFraccionamiento,
-    });
-  } catch (error) {
-    console.error("❌ Error al agregar fraccionamiento:", error);
-    res.status(500).json({ error: "Error interno del servidor" });
-  }
-});
-
-router.post("/:id/casas", async (req, res) => {
-  const { id } = req.params;
+router.post("/:fraccId/casas", async (req, res) => {
+  const { fraccId } = req.params;
   const { numero, propietario, telefono } = req.body;
 
   if (!numero || !propietario || !telefono) {
@@ -63,90 +14,52 @@ router.post("/:id/casas", async (req, res) => {
   }
 
   try {
-    const fraccionamiento = await Fraccionamiento.findById(id);
+    const fraccionamiento = await Fraccionamiento.findById(fraccId);
     if (!fraccionamiento)
       return res.status(404).json({ error: "Fraccionamiento no encontrado." });
 
-    fraccionamiento.casas.push({ numero, propietario, telefono });
+    const nuevaCasa = { numero, propietario, telefono, residentes: [] };
+    fraccionamiento.casas.push(nuevaCasa);
     await fraccionamiento.save();
-    res
-      .status(201)
-      .json({ success: "Casa agregada correctamente", data: fraccionamiento });
+
+    res.status(201).json({
+      mensaje: "Casa agregada correctamente",
+      data: fraccionamiento,
+    });
   } catch (error) {
     console.error("Error al agregar casa:", error);
     res.status(500).json({ error: "Error interno del servidor" });
   }
 });
 
-router.post("/:id/secciones", async (req, res) => {
-  const { id } = req.params;
-  const { nombre, descripcion } = req.body;
+router.post("/:fraccId/casas/:casaId/residentes", async (req, res) => {
+  const { fraccId, casaId } = req.params;
+  const { nombre, edad, relacion } = req.body;
 
-  if (!nombre) {
+  if (!nombre || !edad || !relacion) {
     return res
       .status(400)
-      .json({ error: "El nombre de la sección es obligatorio." });
+      .json({ error: "Todos los campos son obligatorios." });
   }
 
   try {
-    const fraccionamiento = await Fraccionamiento.findById(id);
+    const fraccionamiento = await Fraccionamiento.findById(fraccId);
     if (!fraccionamiento)
       return res.status(404).json({ error: "Fraccionamiento no encontrado." });
 
-    fraccionamiento.secciones.push({ nombre, descripcion });
+    const casa = fraccionamiento.casas.id(casaId);
+    if (!casa) return res.status(404).json({ error: "Casa no encontrada." });
+
+    casa.residentes.push({ nombre, edad, relacion });
     await fraccionamiento.save();
+
     res.status(201).json({
-      success: "Sección agregada correctamente",
+      mensaje: "Residente agregado correctamente",
       data: fraccionamiento,
     });
   } catch (error) {
-    console.error("Error al agregar sección:", error);
+    console.error("Error al agregar residente:", error);
     res.status(500).json({ error: "Error interno del servidor" });
-  }
-});
-
-const mongoose = require("mongoose");
-
-router.put("/update/:id", async (req, res) => {
-  const { id } = req.params;
-  const updateData = req.body;
-
-  if (!mongoose.Types.ObjectId.isValid(id)) {
-    return res.status(400).json({ mensaje: "❌ ID no válido" });
-  }
-
-  console.log("🆔 ID recibido:", id);
-  console.log("📥 Datos recibidos para actualizar:", updateData);
-
-  try {
-    // 📌 Solo hashear la contraseña si el usuario la modificó
-    if (updateData.contrasena && updateData.contrasena.trim() !== "") {
-      const salt = await bcrypt.genSalt(10);
-      updateData.contrasena = await bcrypt.hash(updateData.contrasena, salt);
-    } else {
-      delete updateData.contrasena; // No modificar la contraseña si está vacía
-    }
-
-    const updatedFraccionamiento = await Fraccionamiento.findByIdAndUpdate(
-      id,
-      { $set: updateData },
-      { new: true, runValidators: true }
-    );
-
-    if (!updatedFraccionamiento) {
-      return res
-        .status(404)
-        .json({ mensaje: "❌ Fraccionamiento no encontrado" });
-    }
-
-    console.log("✅ Fraccionamiento actualizado:", updatedFraccionamiento);
-    res.json({
-      mensaje: "✅ Fraccionamiento actualizado correctamente",
-      data: updatedFraccionamiento,
-    });
-  } catch (error) {
-    console.error("❌ Error actualizando fraccionamiento:", error);
-    res.status(500).json({ mensaje: "❌ Error interno del servidor" });
   }
 });
 

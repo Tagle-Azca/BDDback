@@ -1,15 +1,16 @@
 const mongoose = require("mongoose");
-const bcrypt = require("bcryptjs");
+
+const residenteSchema = new mongoose.Schema({
+  nombre: { type: String, required: true },
+  edad: { type: Number, required: true },
+  relacion: { type: String, required: true },
+});
 
 const casaSchema = new mongoose.Schema({
   numero: { type: Number, required: true },
   propietario: { type: String, required: true },
   telefono: { type: String, required: true },
-});
-
-const seccionSchema = new mongoose.Schema({
-  nombre: { type: String, required: true },
-  descripcion: { type: String },
+  residentes: { type: [residenteSchema], default: [] },
 });
 
 const fraccionamientoSchema = new mongoose.Schema({
@@ -30,20 +31,8 @@ const fraccionamientoSchema = new mongoose.Schema({
       return fecha;
     },
   },
-  casas: { type: Array, default: [] },
+  casas: { type: [casaSchema], default: [] },
   secciones: { type: Array, default: [] },
-});
-
-fraccionamientoSchema.pre("save", async function (next) {
-  if (!this.isModified("contrasena")) return next();
-
-  try {
-    const salt = await bcrypt.genSalt(10);
-    this.contrasena = await bcrypt.hash(this.contrasena, salt);
-    next();
-  } catch (error) {
-    next(error);
-  }
 });
 
 const Fraccionamiento = mongoose.model(
