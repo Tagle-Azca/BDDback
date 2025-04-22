@@ -14,20 +14,25 @@ router.post("/login", async (req, res) => {
 
     let user = await Admin.findOne({ usuario });
 
-    if (!user) {
+    if (!utrwoer) {
       user = await FraccAdmin.findOne({ usuario });
     }
 
     if (!user) {
-      console.log("❌ Usuario no encontrado");
+      console.log("Usuario no encontrado");
       return res.status(404).json({ error: "Usuario no encontrado" });
     }
 
-    console.log("✅ Usuario encontrado en:", user.rol);
+    console.log("Usuario encontrado en:", user.rol);
+
+    console.log("🔐 Contraseña recibida en login:", contrasena);
+    console.log("🔐 Hash almacenado en MongoDB:", user.contrasena);
 
     const isMatch = await bcrypt.compare(contrasena, user.contrasena);
+    console.log("✅ Resultado de bcrypt.compare:", isMatch);
+
     if (!isMatch) {
-      console.log("❌ Contraseña incorrecta");
+      console.log("Contraseña incorrecta");
       return res.status(400).json({ error: "Contraseña incorrecta" });
     }
 
@@ -41,10 +46,10 @@ router.post("/login", async (req, res) => {
       { expiresIn: "1h" }
     );
 
-    console.log("✅ Login exitoso:", { usuario: user.usuario, rol: user.rol });
+    console.log("Login exitoso:", { usuario: user.usuario, rol: user.rol });
 
     return res.json({
-      message: "✅ Login exitoso",
+      message: "Login exitoso",
       token,
       role: user.rol,
       redirect:
@@ -53,54 +58,7 @@ router.post("/login", async (req, res) => {
           : `/dashboard/:id${user.fraccionamientoId}`,
     });
   } catch (error) {
-    console.error("❌ Error en el login:", error);
-    res.status(500).json({ error: "Error en el servidor" });
-  }
-});
-
-router.post("/register", async (req, res) => {
-  try {
-    const { usuario, contrasena, rol, fraccionamientoId } = req.body;
-
-    console.log("🔍 Intentando registrar usuario:", usuario);
-
-    let existingUser = await Admin.findOne({ usuario });
-
-    if (!existingUser) {
-      existingUser = await FraccAdmin.findOne({ usuario });
-    }
-
-    if (existingUser) {
-      console.log("❌ El usuario ya está registrado");
-      return res.status(400).json({ error: "El usuario ya está registrado" });
-    }
-
-    const hashedPassword = await bcrypt.hash(contrasena, 10);
-
-    let newUser;
-    if (rol === "superadmin") {
-      newUser = new Admin({ usuario, contrasena: hashedPassword, rol });
-    } else {
-      if (!fraccionamientoId) {
-        return res.status(400).json({
-          error:
-            "fraccionamientoId es requerido para administradores de fraccionamiento",
-        });
-      }
-      newUser = new FraccAdmin({
-        usuario,
-        contrasena: hashedPassword,
-        rol,
-        fraccionamientoId,
-      });
-    }
-
-    await newUser.save();
-
-    console.log("✅ Usuario registrado con éxito:", usuario);
-    res.status(201).json({ message: "Usuario registrado con éxito" });
-  } catch (error) {
-    console.error("❌ Error en el registro:", error);
+    console.error("Error en el login:", error);
     res.status(500).json({ error: "Error en el servidor" });
   }
 });
@@ -119,18 +77,17 @@ router.post("/register", async (req, res) => {
 
     console.log("🔍 Intentando registrar usuario:", usuario);
 
-    let existingUser = await Admin.findOne({ usuario });
-
-    if (!existingUser) {
-      existingUser = await FraccAdmin.findOne({ usuario });
-    }
+    let existingUser =
+      (await Admin.findOne({ usuario })) ||
+      (await FraccAdmin.findOne({ usuario }));
 
     if (existingUser) {
-      console.log("❌ El usuario ya está registrado");
+      console.log("El usuario ya está registrado");
       return res.status(400).json({ error: "El usuario ya está registrado" });
     }
 
     const hashedPassword = await bcrypt.hash(contrasena, 10);
+    console.log("🔒 Hash generado en registro:", hashedPassword); // <-- DIAGNÓSTICO
 
     let newUser;
     if (rol === "superadmin") {
@@ -157,10 +114,10 @@ router.post("/register", async (req, res) => {
 
     await newUser.save();
 
-    console.log("✅ Usuario registrado con éxito:", usuario);
+    console.log("Usuario registrado con éxito:", usuario);
     res.status(201).json({ message: "Usuario registrado con éxito" });
   } catch (error) {
-    console.error("❌ Error en el registro:", error);
+    console.error("Error en el registro:", error);
     res.status(500).json({ error: "Error en el servidor" });
   }
 });

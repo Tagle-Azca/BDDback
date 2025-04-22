@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const {v4: uuidv4} = require("uuid");
 
 const residenteSchema = new mongoose.Schema({
   nombre: { type: String, required: true },
@@ -21,7 +22,13 @@ const fraccionamientoSchema = new mongoose.Schema({
   contrasena: { type: String, required: true },
   telefono: { type: String, required: true },
   estado: { type: String, default: "activo" },
+  puerta: {type: Boolean, default: false},
   fechaExpedicion: { type: Date, default: Date.now },
+  qrVisitas: { type: String, default: () => uuidv4() }, 
+  fechaGenerada: {
+    type: Date,
+    default: Date.now
+  },
   fechaExpiracion: {
     type: Date,
     default: function () {
