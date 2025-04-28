@@ -69,7 +69,8 @@ app.use("/api/auth", authRoutes);
 app.use("/api/fracc", fraccRoutes);
 app.use("/api/residencias", residenciasRoutes);
 app.use("/api/notifications", notificationRoutes);
-app.use("/api/reportes", reportesRoutes)
+app.use("/api/reportes", reportesRoutes);
+
 
 const PORT = process.env.PORT || 5002;
 app.listen(PORT, "0.0.0.0", () =>

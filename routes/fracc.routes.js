@@ -127,7 +127,7 @@ router.post('/:fraccId/abrir-puerta', async (req, res) => {
 
     await Fraccionamiento.updateOne({ _id: fraccId }, { $set: { puerta: true } });
     
-    console.log(`Usuario ${userId} abrió el portón del fraccionamiento ${fraccId}`);
+    console.log(`Residente ${userId} abrió el portón del fraccionamiento ${fraccId}`);
 
     
 
@@ -139,6 +139,23 @@ router.post('/:fraccId/abrir-puerta', async (req, res) => {
     res.status(200).json({ message: "Portón abierto correctamente" });
   } catch (error) {
     console.error("Error al abrir puerta:", error);
+    res.status(500).json({ error: "Error interno del servidor" });
+  }
+});
+
+router.post('/:fraccId/rechazar-puerta', async (req, res) => {
+  const { fraccId } = req.params;
+  const { userId } = req.body;
+
+  try {
+    const fracc = await Fraccionamiento.findById(fraccId);
+    if (!fracc) return res.status(404).json({ error: "Fraccionamiento no encontrado" });
+
+    console.log(`Residente ${userId} rechazó la apertura del portón del fraccionamiento ${fraccId}`);
+
+    res.status(200).json({ message: "Rechazo de apertura registrado correctamente" });
+  } catch (error) {
+    console.error("Error al registrar rechazo:", error);
     res.status(500).json({ error: "Error interno del servidor" });
   }
 });
