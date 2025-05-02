@@ -26,7 +26,7 @@ router.post("/", async (req, res) => {
     await nuevoFraccionamiento.save();
 
     const qrId = nuevoFraccionamiento.qrVisitas;
-    const qrLink = `https://ingresos-drab.vercel.app/Visitas?id=${qrId}`;
+    const qrLink = `https://admin-one-livid.vercel.app/Visitas?id=${qrId}`;
 
     res.status(201).json({
       mensaje: "Fraccionamiento creado correctamente",
@@ -135,7 +135,7 @@ router.put("/:fraccId", async (req, res) => {
       return res.status(404).json({ error: "Fraccionamiento no encontrado.", res});
 
     const qrId = fraccionamiento.qrVisitas;
-    const link = `https://ingresos-drab.vercel.app/Visitas?id=${qrId}`;
+    const link = `https://admin-one-livid.vercel.app/Visitas?id=${qrId}`;
 
     res.status(200).json({
       mensaje: "Fraccionamiento actualizado correctamente",

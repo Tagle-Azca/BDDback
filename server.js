@@ -12,11 +12,12 @@ const reportesRoutes = require("./routes/reportes.routes");
 
 const app = express();
 
-const allowedOrigins = [
-  "http://192.168.1.84:3000",
-  "https://admin-one-livid.vercel.app",
-  "https://ingresosbackend.onrender.com",
-];
+const cors = require("cors");
+
+app.use(cors({
+  origin: ["http://localhost:3000", "https://admin-one-livid.vercel.app"],
+  credentials: true,
+}));
 
 app.use(
   cors({
