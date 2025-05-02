@@ -15,7 +15,7 @@ const app = express();
 const cors = require("cors");
 
 app.use(cors({
-  origin: ["http://localhost:3000", "https://admin-one-livid.vercel.app"],
+  origin: ["https://admin-one-livid.vercel.app"],
   credentials: true,
 }));
 
