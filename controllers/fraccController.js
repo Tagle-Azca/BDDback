@@ -1,22 +1,31 @@
 const FraccUser = require("../models/fraccUserModels");
 const QRCode = require("qrcode");
 const { v4: uuidv4 } = require("uuid");
+const bcrypt = require("bcryptjs");
 
 exports.addFraccUser = async (req, res) => {
-  const { usuario, contraseña, fraccionamiento } = req.body;
+  const { usuario, contrasena, ...fraccionamiento } = req.body;
 
   try {
+    const hashedPassword = await bcrypt.hash(contrasena, 10);
+
+    if (!fraccionamiento.qrVisitas) {
+      fraccionamiento.qrVisitas = uuidv4();
+    }
+
     const nuevoUsuario = new FraccUser({
       usuario,
-      contraseña,
-      fraccionamiento,
+      contraseña: hashedPassword,
+      ...fraccionamiento,
     });
 
     await nuevoUsuario.save();
 
-    const qrId = fraccionamiento.qrVisitas;
+    // Asegurarse de que qrId esté definido y presente en nuevoUsuario
+    const qrId = nuevoUsuario.fraccionamiento?.qrVisitas || nuevoUsuario.qrVisitas;
 
-    const link = `https://ingresos-drab.vercel.app/Visitas?id=${qrId}`;
+    const link = `http://192.168.1.84:3000/Invitados/qrVisitas?id=${qrId}`;
+    console.log("🔗 Link generado para el QR:", link);
 
     const qrImage = await QRCode.toDataURL(link);
 
@@ -70,14 +79,13 @@ exports.updateFraccUser = async (req, res) => {
   const { regenerarQR, ...nuevosDatos } = req.body;
 
   try {
-    if (regenerarQR) {
-      const nuevoQR = uuidv4();
-      nuevosDatos.qrVisitas = nuevoQR;
-      nuevosDatos.fechaGenerada = new Date();
-      const nuevaExp = new Date();
-      nuevaExp.setFullYear(nuevaExp.getFullYear() + 1);
-      nuevosDatos.fechaExpedicion = nuevaExp;
-    }
+    // Regenerar el QR siempre, sin condición
+    const nuevoQR = uuidv4();
+    nuevosDatos.qrVisitas = nuevoQR;
+    nuevosDatos.fechaGenerada = new Date();
+    const nuevaExp = new Date();
+    nuevaExp.setFullYear(nuevaExp.getFullYear() + 1);
+    nuevosDatos.fechaExpedicion = nuevaExp;
 
     const fraccActualizado = await FraccUser.findByIdAndUpdate(
       id,
@@ -89,7 +97,7 @@ exports.updateFraccUser = async (req, res) => {
       return res.status(404).json({ message: "Fraccionamiento no encontrado" });
     }
 
-    const qrId = fraccActualizado.fraccionamiento.qrVisitas;
+    const qrId = fraccActualizado.fraccionamiento?.qrVisitas || fraccActualizado.qrVisitas;
     const link = `https://ingresos-drab.vercel.app/Visitas?id=${qrId}`;
     const qrImage = await QRCode.toDataURL(link);
 

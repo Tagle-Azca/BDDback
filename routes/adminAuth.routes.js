@@ -87,7 +87,7 @@ router.post("/register", async (req, res) => {
     }
 
     const hashedPassword = await bcrypt.hash(contrasena, 10);
-    console.log("🔒 Hash generado en registro:", hashedPassword); // <-- DIAGNÓSTICO
+    console.log("🔒 Hash generado en registro:", hashedPassword); 
 
     let newUser;
     if (rol === "superadmin") {

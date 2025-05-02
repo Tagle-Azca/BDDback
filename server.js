@@ -9,10 +9,11 @@ const fraccRoutes = require("./routes/fracc.routes");
 const notificationRoutes = require("./routes/notification.routes");
 const reportesRoutes = require("./routes/reportes.routes");
 
+
 const app = express();
 
 const allowedOrigins = [
-  "http://localhost:3000",
+  "http://192.168.1.84:3000",
   "https://admin-one-livid.vercel.app",
   "https://ingresosbackend.onrender.com",
 ];

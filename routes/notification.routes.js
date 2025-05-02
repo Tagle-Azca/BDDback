@@ -10,7 +10,7 @@ router.post("/send-notification", (req, res) => {
   if (title && body) {
     lastNotification = { title, body };
     wasConsumed = false; 
-    console.log("✅ Notificación guardada:", lastNotification);
+    console.log("Notificación guardada:", lastNotification);
     return res.send({ success: true });
   }
 
@@ -23,7 +23,7 @@ router.get("/poll", (req, res) => {
   }
 
   wasConsumed = true;
-  console.log("📤 Notificación enviada:", lastNotification);
+  console.log("Notificación enviada:", lastNotification);
   return res.send(lastNotification);
 });
 

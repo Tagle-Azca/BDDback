@@ -13,6 +13,33 @@ const validarCampos = (campos, res) => {
   }
   return true;
 };
+
+//crear fraccionamientos
+router.post("/", async (req, res) => {
+  try {
+    const hashedPassword = await bcrypt.hash(req.body.contrasena, 10); // 10 salt rounds
+    const nuevoFraccionamiento = new Fraccionamiento({
+      ...req.body,
+      contrasena: hashedPassword,
+    });
+
+    await nuevoFraccionamiento.save();
+
+    const qrId = nuevoFraccionamiento.qrVisitas;
+    const qrLink = `https://ingresos-drab.vercel.app/Visitas?id=${qrId}`;
+
+    res.status(201).json({
+      mensaje: "Fraccionamiento creado correctamente",
+      data: nuevoFraccionamiento,
+      qr: { link: qrLink },
+    });
+  } catch (error) {
+    console.error("Error al crear fraccionamiento:", error);
+    res.status(500).json({ error: "Error interno del servidor" });
+  }
+});
+
+//ver todos los fraccionamientos
 router.get("/", async (req, res) => {
   try {
     const fraccionamientos = await Fraccionamiento.find();
@@ -26,6 +53,7 @@ router.get("/", async (req, res) => {
 const FraccUser = require("../models/fraccUserModels");
 
 
+//Agregar casa a un fraccionamiento
 
 router.post("/:fraccId/casas", async (req, res) => {
   const { fraccId } = req.params;
@@ -51,6 +79,8 @@ router.post("/:fraccId/casas", async (req, res) => {
     res.status(500).json({ error: "Error interno del servidor" });
   }
 });
+
+//Agregar residente a una casa
 
 router.post("/:fraccId/casas/:casaId/residentes", async (req, res) => {
   const { fraccId, casaId } = req.params;
@@ -78,6 +108,8 @@ router.post("/:fraccId/casas/:casaId/residentes", async (req, res) => {
     res.status(500).json({ error: "Error interno del servidor" });
   }
 });
+
+//Actualizar fraccionamiento
 
 router.put("/:fraccId", async (req, res) => {
   const { fraccId } = req.params;
@@ -174,4 +206,31 @@ router.get('/:fraccId/estado-puerta', async (req, res) => {
   }
 });
 
+// LOGIN
+router.post("/login", async (req, res) => {
+  const { usuario, contrasena } = req.body;
+
+  if (!usuario || !contrasena) {
+    return res.status(400).json({ error: "Todos los campos son obligatorios" });
+  }
+
+  try {
+    const user = await Fraccionamiento.findOne({ usuario });
+    if (!user) return res.status(404).json({ error: "Usuario no encontrado" });
+
+    const isMatch = await bcrypt.compare(contrasena, user.contrasena);
+    if (!isMatch) {
+      return res.status(401).json({ error: "Contraseña incorrecta" });
+    }
+
+    res.status(200).json({
+      mensaje: "Login exitoso",
+      token: "token_simulado",
+      user,
+    });
+  } catch (error) {
+    console.error("Error al hacer login:", error);
+    res.status(500).json({ error: "Error del servidor al iniciar sesión" });
+  }
+});
 module.exports = router;
