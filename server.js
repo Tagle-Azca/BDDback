@@ -12,20 +12,16 @@ const reportesRoutes = require("./routes/reportes.routes");
 
 const app = express();
 
-const cors = require("cors");
-
 app.use(cors({
   origin: ["https://admin-one-livid.vercel.app"],
   credentials: true,
 }));
 
-app.use(
-  cors({
-    origin: allowedOrigins,
-    methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
-    credentials: true,
-  })
-);
+app.use(cors({
+  origin: typeof allowedOrigins !== "undefined" ? allowedOrigins : ["https://admin-one-livid.vercel.app"],
+  methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
+  credentials: true,
+}));
 
 app.use(express.json());
 
@@ -75,6 +71,7 @@ app.use("/api/reportes", reportesRoutes);
 
 
 const PORT = process.env.PORT || 5002;
+
 app.listen(PORT, "0.0.0.0", () =>
   console.log(`Servidor corriendo`)
 );
