@@ -22,7 +22,7 @@ const fraccionamientoSchema = new mongoose.Schema({
   contrasena: { type: String, required: true },
   telefono: { type: String, required: true },
   estado: { type: String, default: "activo" },
-  puerta: {type: Boolean, default: false},
+  puerta: {type: Boolean, default: falcomose},
   fechaExpedicion: { type: Date, default: Date.now },
   qrVisitas: { type: String, default: () => uuidv4() }, 
   fechaGenerada: {
@@ -38,7 +38,7 @@ const fraccionamientoSchema = new mongoose.Schema({
       return fecha;
     },
   },
-  casas: { type: [casaSchema], default: [] },
+  residencias: { type: [casaSchema], default: [] },
   secciones: { type: Array, default: [] },
 });
 

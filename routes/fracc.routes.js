@@ -56,7 +56,7 @@ const FraccUser = require("../models/fraccUserModels");
 
 //Agregar casa a un fraccionamiento
 
-router.post("/:fraccId/casas", async (req, res) => {
+router.post("/:fraccId/residencia", async (req, res) => {
   const { fraccId } = req.params;
   const { numero, propietario, telefono } = req.body;
 
@@ -67,8 +67,8 @@ router.post("/:fraccId/casas", async (req, res) => {
     if (!fraccionamiento)
       return res.status(404).json({ error: "Fraccionamiento no encontrado." });
 
-    const nuevaCasa = { numero, propietario, telefono, residentes: [] };
-    fraccionamiento.casas.push(nuevaCasa);
+    const nuevaRsidencia = { numero, propietario, telefono, residentes: [] };
+    fraccionamiento.residencias.push(nuevaRsidencia);
     await fraccionamiento.save();
 
     res.status(201).json({
@@ -83,8 +83,8 @@ router.post("/:fraccId/casas", async (req, res) => {
 
 //Agregar residente a una casa
 
-router.post("/:fraccId/casas/:casaId/residentes", async (req, res) => {
-  const { fraccId, casaId } = req.params;
+router.post("/:fraccId/residencia/:residenciaId/residentes", async (req, res) => {
+  const { fraccId, residenciaId } = req.params;
   const { nombre, edad, relacion } = req.body;
 
   if (!validarCampos({ nombre, edad, relacion }, res)) return;
@@ -94,7 +94,7 @@ router.post("/:fraccId/casas/:casaId/residentes", async (req, res) => {
     if (!fraccionamiento)
       return res.status(404).json({ error: "Fraccionamiento no encontrado." });
 
-    const casa = fraccionamiento.casas.id(casaId);
+    const casa = fraccionamiento.residencias.id(residenciaId);
     if (!casa) return res.status(404).json({ error: "Casa no encontrada." });
 
     casa.residentes.push({ nombre, edad, relacion });
