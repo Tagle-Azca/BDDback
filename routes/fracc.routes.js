@@ -15,10 +15,10 @@ const validarCampos = (campos, res) => {
   return true;
 };
 
-//crear fraccionamientos
+// Crear fraccionamiento
 router.post("/", async (req, res) => {
   try {
-    const hashedPassword = await bcrypt.hash(req.body.contrasena, 10); // 10 salt rounds
+    const hashedPassword = await bcrypt.hash(req.body.contrasena, 10);
     const nuevoFraccionamiento = new Fraccionamiento({
       ...req.body,
       contrasena: hashedPassword,
@@ -40,7 +40,7 @@ router.post("/", async (req, res) => {
   }
 });
 
-//ver todos los fraccionamientos
+// Obtener todos los fraccionamientos
 router.get("/", async (req, res) => {
   try {
     const fraccionamientos = await Fraccionamiento.find();
@@ -51,67 +51,47 @@ router.get("/", async (req, res) => {
   }
 });
 
-const FraccUser = require("../models/fraccUserModels");
-
-
-//Agregar casa a un fraccionamiento
-
-router.post("/:fraccId/residencia", async (req, res) => {
-  const { fraccId } = req.params;
-  const { numero, propietario, telefono } = req.body;
-
-  if (!validarCampos({ numero, propietario, telefono }, res)) return;
-
+// Agregar casa
+router.post("/:fraccId/casas", async (req, res) => {
   try {
-    const fraccionamiento = await Fraccionamiento.findById(fraccId);
-    if (!fraccionamiento)
-      return res.status(404).json({ error: "Fraccionamiento no encontrado." });
+    const { fraccId } = req.params;
+    const { numero, propietario, telefono } = req.body;
 
-    const nuevaRsidencia = { numero, propietario, telefono, residentes: [] };
-    fraccionamiento.residencias.push(nuevaRsidencia);
-    await fraccionamiento.save();
+    const fracc = await Fraccionamiento.findById(fraccId);
+    if (!fracc) return res.status(404).json({ mensaje: "Fraccionamiento no encontrado" });
 
-    res.status(201).json({
-      mensaje: "Casa agregada correctamente",
-      data: fraccionamiento,
-    });
+    const nuevaCasa = { numero, propietario, telefono, residentes: [] };
+    fracc.casas.push(nuevaCasa);
+    await fracc.save();
+
+    res.status(201).json(fracc);
   } catch (error) {
-    console.error("Error al agregar casa:", error);
-    res.status(500).json({ error: "Error interno del servidor" });
+    res.status(500).json({ error: error.message });
   }
 });
 
-//Agregar residente a una casa
-
-router.post("/:fraccId/residencia/:residenciaId/residentes", async (req, res) => {
-  const { fraccId, residenciaId } = req.params;
-  const { nombre, edad, relacion } = req.body;
-
-  if (!validarCampos({ nombre, edad, relacion }, res)) return;
-
+// Agregar residente a una casa
+router.post("/:fraccId/casas/:numero/residentes", async (req, res) => {
   try {
-    const fraccionamiento = await Fraccionamiento.findById(fraccId);
-    if (!fraccionamiento)
-      return res.status(404).json({ error: "Fraccionamiento no encontrado." });
+    const { fraccId, numero } = req.params;
+    const { nombre, edad, relacion } = req.body;
 
-    const casa = fraccionamiento.residencias.id(residenciaId);
-    if (!casa) return res.status(404).json({ error: "Casa no encontrada." });
+    const fracc = await Fraccionamiento.findById(fraccId);
+    if (!fracc) return res.status(404).json({ mensaje: "Fraccionamiento no encontrado" });
+
+    const casa = fracc.casas.find(c => c.numero === parseInt(numero));
+    if (!casa) return res.status(404).json({ mensaje: "Casa no encontrada" });
 
     casa.residentes.push({ nombre, edad, relacion });
-    await fraccionamiento.save();
+    await fracc.save();
 
-    res.status(201).json({
-      mensaje: "Residente agregado correctamente",
-      data: fraccionamiento,
-    });
+    res.status(201).json(fracc);
   } catch (error) {
-    console.error("Error al agregar residente:", error);
-    res.status(500).json({ error: "Error interno del servidor" });
+    res.status(500).json({ error: error.message });
   }
 });
 
-//Actualizar fraccionamiento
-
+// Actualizar fraccionamiento
 router.put("/:fraccId", async (req, res) => {
   const { fraccId } = req.params;
   const { regenerarQR, ...nuevosDatos } = req.body;
@@ -133,7 +113,7 @@ router.put("/:fraccId", async (req, res) => {
     );
 
     if (!fraccionamiento)
-      return res.status(404).json({ error: "Fraccionamiento no encontrado.", res});
+      return res.status(404).json({ error: "Fraccionamiento no encontrado." });
 
     const qrId = fraccionamiento.qrVisitas;
     const link = `https://admin-one-livid.vercel.app/Visitas?id=${qrId}`;
@@ -149,25 +129,22 @@ router.put("/:fraccId", async (req, res) => {
   }
 });
 
-
+// Abrir puerta
 router.post('/:fraccId/abrir-puerta', async (req, res) => {
   const { fraccId } = req.params;
-  const { userId, fraccionamiento } = req.body;
-  
+  const { userId } = req.body;
+
   try {
     const fracc = await Fraccionamiento.findById(fraccId);
     if (!fracc) return res.status(404).json({ error: "Fraccionamiento no encontrado" });
 
     await Fraccionamiento.updateOne({ _id: fraccId }, { $set: { puerta: true } });
-    
     console.log(`Residente ${userId} abrió el portón del fraccionamiento ${fraccId}`);
-
-    
 
     setTimeout(async () => {
       await Fraccionamiento.updateOne({ _id: fraccId }, { $set: { puerta: false } });
       console.log(`Portón del fraccionamiento ${fraccId} cerrado automáticamente`);
-    }, 10000); 
+    }, 10000);
 
     res.status(200).json({ message: "Portón abierto correctamente" });
   } catch (error) {
@@ -176,6 +153,7 @@ router.post('/:fraccId/abrir-puerta', async (req, res) => {
   }
 });
 
+// Rechazar apertura de puerta
 router.post('/:fraccId/rechazar-puerta', async (req, res) => {
   const { fraccId } = req.params;
   const { userId } = req.body;
@@ -185,7 +163,6 @@ router.post('/:fraccId/rechazar-puerta', async (req, res) => {
     if (!fracc) return res.status(404).json({ error: "Fraccionamiento no encontrado" });
 
     console.log(`Residente ${userId} rechazó la apertura del portón del fraccionamiento ${fraccId}`);
-
     res.status(200).json({ message: "Rechazo de apertura registrado correctamente" });
   } catch (error) {
     console.error("Error al registrar rechazo:", error);
@@ -193,6 +170,7 @@ router.post('/:fraccId/rechazar-puerta', async (req, res) => {
   }
 });
 
+// Estado del portón
 router.get('/:fraccId/estado-puerta', async (req, res) => {
   const { fraccId } = req.params;
 
@@ -207,7 +185,7 @@ router.get('/:fraccId/estado-puerta', async (req, res) => {
   }
 });
 
-// LOGIN
+// Login
 router.post("/login", async (req, res) => {
   const { usuario, contrasena } = req.body;
 
@@ -234,4 +212,5 @@ router.post("/login", async (req, res) => {
     res.status(500).json({ error: "Error del servidor al iniciar sesión" });
   }
 });
+
 module.exports = router;

@@ -22,7 +22,7 @@ const fraccionamientoSchema = new mongoose.Schema({
   contrasena: { type: String, required: true },
   telefono: { type: String, required: true },
   estado: { type: String, default: "activo" },
-  puerta: {type: Boolean, default: falcomose},
+  puerta: {type: Boolean, default: false},
   fechaExpedicion: { type: Date, default: Date.now },
   qrVisitas: { type: String, default: () => uuidv4() }, 
   fechaGenerada: {
