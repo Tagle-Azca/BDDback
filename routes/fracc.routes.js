@@ -128,7 +128,19 @@ router.put("/:fraccId", async (req, res) => {
     res.status(500).json({ error: "Error interno del servidor" });
   }
 });
+// Obtener fraccionamiento por ID
+router.get("/:fraccId", async (req, res) => {
+  try {
+    const { fraccId } = req.params;
+    const fracc = await Fraccionamiento.findById(fraccId);
+    if (!fracc) return res.status(404).json({ error: "Fraccionamiento no encontrado" });
 
+    res.status(200).json(fracc);
+  } catch (error) {
+    console.error("Error al obtener fraccionamiento:", error);
+    res.status(500).json({ error: "Error del servidor" });
+  }
+});
 // Abrir puerta
 router.post('/:fraccId/abrir-puerta', async (req, res) => {
   const { fraccId } = req.params;
@@ -212,5 +224,7 @@ router.post("/login", async (req, res) => {
     res.status(500).json({ error: "Error del servidor al iniciar sesión" });
   }
 });
+
+
 
 module.exports = router;
