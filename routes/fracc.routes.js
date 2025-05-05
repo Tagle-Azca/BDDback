@@ -28,10 +28,8 @@ router.post("/", async (req, res) => {
     
     await nuevoFraccionamiento.save();
     
-    // Ahora que el documento ya fue guardado, su _id existe
     const qrLink = `https://admin-one-livid.vercel.app/Visitas?id=${nuevoFraccionamiento._id}`;
     
-    // Opcionalmente actualiza el campo qrVisitas en el documento
     nuevoFraccionamiento.qrVisitas = qrLink;
     await nuevoFraccionamiento.save();
 
