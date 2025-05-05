@@ -5,6 +5,7 @@ const residenteSchema = new mongoose.Schema({
   nombre: { type: String, required: true },
   edad: { type: Number, required: true },
   relacion: { type: String, required: true },
+  qrPersonal: { type: String, default: () => uuidv4() },
 });
 
 const casaSchema = new mongoose.Schema({
@@ -39,7 +40,6 @@ const fraccionamientoSchema = new mongoose.Schema({
     },
   },
   residencias: { type: [casaSchema], default: [] },
-  secciones: { type: Array, default: [] },
 });
 
 const Fraccionamiento = mongoose.model(

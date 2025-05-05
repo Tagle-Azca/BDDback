@@ -63,7 +63,7 @@ router.post("/:fraccId/casas", async (req, res) => {
     if (!fracc) return res.status(404).json({ mensaje: "Fraccionamiento no encontrado" });
 
     const nuevaCasa = { numero, propietario, telefono, residentes: [] };
-    fracc.casas.push(nuevaCasa);
+    fracc.residencias.push(nuevaCasa);
     await fracc.save();
 
     res.status(201).json(fracc);
@@ -81,10 +81,10 @@ router.post("/:fraccId/casas/:numero/residentes", async (req, res) => {
     const fracc = await Fraccionamiento.findById(fraccId);
     if (!fracc) return res.status(404).json({ mensaje: "Fraccionamiento no encontrado" });
 
-    const casa = fracc.casas.find(c => c.numero === parseInt(numero));
+    const casa = fracc.residencias.find(c => c.numero === parseInt(numero));
     if (!casa) return res.status(404).json({ mensaje: "Casa no encontrada" });
 
-    casa.residentes.push({ nombre, edad, relacion });
+    casa.residentes.push({ nombre, edad, relacion, qrPersonal: uuidv4() });
     await fracc.save();
 
     res.status(201).json(fracc);
