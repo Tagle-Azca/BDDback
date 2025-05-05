@@ -24,7 +24,12 @@ const fraccionamientoSchema = new mongoose.Schema({
   estado: { type: String, default: "activo" },
   puerta: {type: Boolean, default: false},
   fechaExpedicion: { type: Date, default: Date.now },
-  qrVisitas: { type: String, default: () => uuidv4() }, 
+  qrVisitas: {
+    type: String,
+    default: function () {
+      return `https://admin-one-livid.vercel.app/Visitas?id=${this._id}`;
+    },
+  },
   fechaGenerada: {
     type: Date,
     default: Date.now
