@@ -25,11 +25,15 @@ router.post("/", async (req, res) => {
       ...req.body,
       contrasena: hashedPassword,
     });
-
+    
     await nuevoFraccionamiento.save();
-
-    const qrId = nuevoFraccionamiento.qrVisitas;
-    const qrLink = `https://admin-one-livid.vercel.app/Visitas?id=${qrId}`;
+    
+    // Ahora que el documento ya fue guardado, su _id existe
+    const qrLink = `https://admin-one-livid.vercel.app/Visitas?id=${nuevoFraccionamiento._id}`;
+    
+    // Opcionalmente actualiza el campo qrVisitas en el documento
+    nuevoFraccionamiento.qrVisitas = qrLink;
+    await nuevoFraccionamiento.save();
 
     res.status(201).json({
       mensaje: "Fraccionamiento creado correctamente",
