@@ -20,8 +20,7 @@ exports.addFraccUser = async (req, res) => {
     });
 
     await nuevoUsuario.save();
-
-    // Asegurarse de que qrId esté definido y presente en nuevoUsuario
+o
     const qrId = nuevoUsuario.fraccionamiento?.qrVisitas || nuevoUsuario.qrVisitas;
 
     const link = `https://admin-one-livid.vercel.app/Invitados/qrVisitas?id=${qrId}`;
@@ -79,13 +78,12 @@ exports.updateFraccUser = async (req, res) => {
   const { regenerarQR, ...nuevosDatos } = req.body;
 
   try {
-    // Regenerar el QR siempre, sin condición
     const nuevoQR = uuidv4();
     nuevosDatos.qrVisitas = nuevoQR;
     nuevosDatos.fechaGenerada = new Date();
-    const nuevaExp = new Date();
-    nuevaExp.setFullYear(nuevaExp.getFullYear() + 1);
-    nuevosDatos.fechaExpedicion = nuevaExp;
+    const nuevaFechaExp = new Date();
+    nuevaFechaExp.setFullYear(nuevaFechaExp.getFullYear() + 1);
+    nuevosDatos.fechaExpedicion = nuevaFechaExp;
 
     const fraccActualizado = await FraccUser.findByIdAndUpdate(
       id,

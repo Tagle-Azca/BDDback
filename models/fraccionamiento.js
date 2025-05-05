@@ -9,8 +9,7 @@ const residenteSchema = new mongoose.Schema({
 
 const casaSchema = new mongoose.Schema({
   numero: { type: Number, required: true },
-  propietario: { type: String, required: true },
-  telefono: { type: String, required: true },
+  qrCasa: { type: String, default: () => uuidv4() }, 
   residentes: { type: [residenteSchema], default: [] },
 });
 
