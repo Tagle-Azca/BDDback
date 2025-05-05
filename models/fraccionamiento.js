@@ -3,7 +3,6 @@ const {v4: uuidv4} = require("uuid");
 
 const residenteSchema = new mongoose.Schema({
   nombre: { type: String, required: true },
-  edad: { type: Number, required: true },
   relacion: { type: String, required: true },
   qrPersonal: { type: String, default: () => uuidv4() },
 });
