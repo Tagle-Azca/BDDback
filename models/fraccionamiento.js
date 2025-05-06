@@ -5,6 +5,7 @@ const residenteSchema = new mongoose.Schema({
   nombre: { type: String, required: true },
   relacion: { type: String, required: true },
   qrPersonal: { type: String, default: () => uuidv4() },
+  activo: { type: Boolean, default: false },
 });
 
 const casaSchema = new mongoose.Schema({

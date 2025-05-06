@@ -101,30 +101,29 @@ router.put("/:fraccId", async (req, res) => {
   const { regenerarQR, ...nuevosDatos } = req.body;
 
   try {
+    const fraccionamiento = await Fraccionamiento.findById(fraccId);
+    if (!fraccionamiento)
+      return res.status(404).json({ error: "Fraccionamiento no encontrado." });
+
     if (regenerarQR) {
-      const nuevoQR = uuidv4();
-      nuevosDatos.qrVisitas = nuevoQR;
+      nuevosDatos.qrVisitas = `https://admin-one-livid.vercel.app/Visitas?id=${fraccionamiento._id}`;
       nuevosDatos.fechaGenerada = new Date();
       const nuevaExp = new Date();
       nuevaExp.setFullYear(nuevaExp.getFullYear() + 1);
       nuevosDatos.fechaExpedicion = nuevaExp;
     }
 
-    const fraccionamiento = await Fraccionamiento.findByIdAndUpdate(
+    const actualizado = await Fraccionamiento.findByIdAndUpdate(
       fraccId,
       nuevosDatos,
       { new: true }
     );
 
-    if (!fraccionamiento)
-      return res.status(404).json({ error: "Fraccionamiento no encontrado." });
-
-    const qrId = fraccionamiento.qrVisitas;
-    const link = `https://admin-one-livid.vercel.app/Visitas?id=${qrId}`;
+    const link = actualizado.qrVisitas;
 
     res.status(200).json({
       mensaje: "Fraccionamiento actualizado correctamente",
-      data: fraccionamiento,
+      data: actualizado,
       qr: { link },
     });
   } catch (error) {
@@ -132,6 +131,7 @@ router.put("/:fraccId", async (req, res) => {
     res.status(500).json({ error: "Error interno del servidor" });
   }
 });
+
 // Obtener fraccionamiento por ID
 router.get("/:fraccId", async (req, res) => {
   try {
@@ -226,6 +226,49 @@ router.post("/login", async (req, res) => {
   } catch (error) {
     console.error("Error al hacer login:", error);
     res.status(500).json({ error: "Error del servidor al iniciar sesión" });
+  }
+});
+
+
+router.get("/residencias/:fraccId/:numero", async (req, res) => {
+  try {
+    const { fraccId, numero } = req.params;
+
+    const fracc = await Fraccionamiento.findById(fraccId);
+    if (!fracc) return res.status(404).json({ error: "Fraccionamiento no encontrado" });
+
+    const casa = fracc.residencias.find(c => c.numero === parseInt(numero));
+    if (!casa) return res.status(404).json({ error: "Residencia no encontrada" });
+
+    res.status(200).json({ residentes: casa.residentes });
+  } catch (error) {
+    res.status(500).json({ error: "Error interno del servidor" });
+  }
+});
+
+
+router.post("/residencias/:fraccId/:numero/login", async (req, res) => {
+  try {
+    const { fraccId, numero } = req.params;
+    const { residenteId } = req.body;
+
+    const fracc = await Fraccionamiento.findById(fraccId);
+    if (!fracc) return res.status(404).json({ error: "Fraccionamiento no encontrado" });
+
+    const casa = fracc.residencias.find(c => c.numero === parseInt(numero));
+    if (!casa) return res.status(404).json({ error: "Residencia no encontrada" });
+
+    const residente = casa.residentes.find(r => r._id.toString() === residenteId);
+    if (!residente) return res.status(404).json({ error: "Residente no encontrado" });
+
+    if (residente.activo) return res.status(400).json({ error: "Este residente ya está registrado" });
+
+    residente.activo = true; // nuevo campo opcional
+    await fracc.save();
+
+    res.status(200).json({ message: "Sesión registrada exitosamente", residente });
+  } catch (error) {
+    res.status(500).json({ error: "Error interno del servidor" });
   }
 });
 
