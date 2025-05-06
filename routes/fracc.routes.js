@@ -59,12 +59,12 @@ router.get("/", async (req, res) => {
 router.post("/:fraccId/casas", async (req, res) => {
   try {
     const { fraccId } = req.params;
-    const { numero, propietario, telefono } = req.body;
+    const { numero } = req.body;
 
     const fracc = await Fraccionamiento.findById(fraccId);
     if (!fracc) return res.status(404).json({ mensaje: "Fraccionamiento no encontrado" });
 
-    const nuevaCasa = { numero, propietario, telefono, residentes: [] };
+    const nuevaCasa = { numero, residentes: [] };
     fracc.residencias.push(nuevaCasa);
     await fracc.save();
 
