@@ -13,11 +13,6 @@ const reportesRoutes = require("./routes/reportes.routes");
 const app = express();
 
 app.use(cors({
-  origin: ["https://admin-one-livid.vercel.app"],
-  credentials: true,
-}));
-
-app.use(cors({
   origin: typeof allowedOrigins !== "undefined" ? allowedOrigins : ["https://admin-one-livid.vercel.app"],
   methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
   credentials: true,

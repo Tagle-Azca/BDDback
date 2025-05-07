@@ -314,6 +314,24 @@ router.post("/:fraccId/casas/:numero/visitas", upload.single("foto"), async (req
 
     await fracc.save();
 
+    // Enviar notificación al endpoint de notificaciones
+    const fetch = require("node-fetch");
+    const notificacion = {
+      title: "Nueva Visita",
+      body: `Visita registrada para la casa ${numero}: ${nombreVisitante} - ${motivo}`,
+      dep: numero
+    };
+
+    try {
+      await fetch("https://ingresosbackend.onrender.com/api/notification/send-notification", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(notificacion)
+      });
+    } catch (err) {
+      console.error("Error al enviar notificación:", err);
+    }
+
     res.status(201).json({ mensaje: "Visita registrada con éxito" });
   } catch (error) {
     console.error("Error al registrar visita:", error);
