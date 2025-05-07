@@ -275,3 +275,48 @@ router.post("/residencias/:fraccId/:numero/login", async (req, res) => {
 
 
 module.exports = router;
+
+// --- Ruta para registrar visitas con imagen ---
+const multer = require("multer");
+const path = require("path");
+
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, "uploads/");
+  },
+  filename: function (req, file, cb) {
+    cb(null, Date.now() + path.extname(file.originalname));
+  }
+});
+
+const upload = multer({ storage: storage });
+
+router.post("/:fraccId/casas/:numero/visitas", upload.single("foto"), async (req, res) => {
+  try {
+    const { fraccId, numero } = req.params;
+    const { nombreVisitante, motivo } = req.body;
+    const foto = req.file?.filename || null;
+
+    const fracc = await Fraccionamiento.findById(fraccId);
+    if (!fracc) return res.status(404).json({ error: "Fraccionamiento no encontrado" });
+
+    const casa = fracc.residencias.find(c => c.numero === parseInt(numero));
+    if (!casa) return res.status(404).json({ error: "Residencia no encontrada" });
+
+    if (!casa.visitas) casa.visitas = [];
+
+    casa.visitas.push({
+      nombreVisitante,
+      motivo,
+      foto,
+      fecha: new Date(),
+    });
+
+    await fracc.save();
+
+    res.status(201).json({ mensaje: "Visita registrada con éxito" });
+  } catch (error) {
+    console.error("Error al registrar visita:", error);
+    res.status(500).json({ error: "Error interno del servidor" });
+  }
+});
