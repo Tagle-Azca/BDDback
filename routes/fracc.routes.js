@@ -96,7 +96,7 @@ router.post("/:fraccId/casas/:numero/residentes", async (req, res) => {
 });
 
 // Actualizar fraccionamiento
-router.put("/:fraccId", async (req, res) => {
+router.put("/Update/:fraccId", async (req, res) => {
   const { fraccId } = req.params;
   const { regenerarQR, ...nuevosDatos } = req.body;
 
@@ -263,7 +263,7 @@ router.post("/residencias/:fraccId/:numero/login", async (req, res) => {
 
     if (residente.activo) return res.status(400).json({ error: "Este residente ya está registrado" });
 
-    residente.activo = true; // nuevo campo opcional
+    residente.activo = true;
     await fracc.save();
 
     res.status(200).json({ message: "Sesión registrada exitosamente", residente });
