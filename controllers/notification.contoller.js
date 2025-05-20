@@ -1,11 +1,10 @@
-const sendNotification = async (req, res) => {
-  const { title, body } = req.body;
-  global.latestNotification = { title, body };
-  console.log("Notificación recibida y guardada:", { title, body });
-  return res.status(200).json({
-    success: true,
-    message: "Notificación recibida correctamente",
-  });
-};
+const OneSignal = require('onesignal-node');
+
+const client = new OneSignal.Client({
+  app: { 
+    appAuthKey: process.env.ONESIGNAL_API_KEY,
+    appId: process.env.ONESIGNAL_APP_ID,
+  }
+});
 
 module.exports = sendNotification;

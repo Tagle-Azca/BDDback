@@ -275,8 +275,6 @@ router.post("/residencias/:fraccId/:numero/login", async (req, res) => {
 
 
 module.exports = router;
-
-// --- Ruta para registrar visitas con imagen ---
 const multer = require("multer");
 const path = require("path");
 
@@ -291,11 +289,15 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage: storage });
 
+const cloudinary = require("../config/cloudinary");
+const fs = require("fs");
+const fetch = require("node-fetch");
+
 router.post("/:fraccId/casas/:numero/visitas", upload.single("foto"), async (req, res) => {
   try {
     const { fraccId, numero } = req.params;
     const { nombreVisitante, motivo } = req.body;
-    const foto = req.file?.filename || null;
+    const localPath = req.file?.path;
 
     const fracc = await Fraccionamiento.findById(fraccId);
     if (!fracc) return res.status(404).json({ error: "Fraccionamiento no encontrado" });
@@ -305,36 +307,62 @@ router.post("/:fraccId/casas/:numero/visitas", upload.single("foto"), async (req
 
     if (!casa.visitas) casa.visitas = [];
 
+    // esto sube imagen a Cloudinary
+    let fotoUrl = null;
+    if (localPath) {
+      const resultado = await cloudinary.uploader.upload(localPath, {
+        folder: "visitas",
+      });
+      fotoUrl = resultado.secure_url;
+      fs.unlinkSync(localPath); 
+    }
+
     casa.visitas.push({
       nombreVisitante,
       motivo,
-      foto,
+      foto: fotoUrl,
       fecha: new Date(),
     });
 
     await fracc.save();
 
-    // Enviar notificación al endpoint de notificaciones
-    const fetch = require("node-fetch");
     const notificacion = {
       title: "Nueva Visita",
       body: `Visita registrada para la casa ${numero}: ${nombreVisitante} - ${motivo}`,
-      dep: numero
+      fraccId,
+      residencia: numero,
     };
 
     try {
       await fetch("https://ingresosbackend.onrender.com/api/notification/send-notification", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(notificacion)
+        body: JSON.stringify(notificacion),
       });
     } catch (err) {
       console.error("Error al enviar notificación:", err);
     }
 
-    res.status(201).json({ mensaje: "Visita registrada con éxito" });
+    res.status(201).json({ mensaje: "Visita registrada con éxito", foto: fotoUrl });
   } catch (error) {
     console.error("Error al registrar visita:", error);
+    res.status(500).json({ error: "Error interno del servidor" });
+  }
+});
+
+router.get("/:fraccId/casas/:numero/visitas", async (req, res) => {
+  try {
+    const { fraccId, numero } = req.params;
+
+    const fracc = await Fraccionamiento.findById(fraccId);
+    if (!fracc) return res.status(404).json({ error: "Fraccionamiento no encontrado" });
+
+    const casa = fracc.residencias.find(c => c.numero === parseInt(numero));
+    if (!casa) return res.status(404).json({ error: "Residencia no encontrada" });
+
+    res.status(200).json({ visitas: casa.visitas || [] });
+  } catch (error) {
+    console.error("Error al obtener visitas:", error);
     res.status(500).json({ error: "Error interno del servidor" });
   }
 });
