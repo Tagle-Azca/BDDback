@@ -309,13 +309,23 @@ router.post("/:fraccId/casas/:numero/visitas",upload.single("fotoDni"), async (r
 
     // esto sube imagen a Cloudinary
     let fotoUrl = null;
-    if (localPath) {
-      const resultado = await cloudinary.uploader.upload(localPath, {
-        folder: "visitas",
-      });
-      fotoUrl = resultado.secure_url;
-      fs.unlinkSync(localPath); 
-    }
+    if (!req.file || !req.file.path) {
+  return res.status(400).json({ error: "No se recibió ninguna imagen válida." });
+}
+
+try {
+  const resultado = await cloudinary.uploader.upload(req.file.path, {
+    folder: "visitas",
+  });
+  fotoUrl = resultado.secure_url;
+
+  if (fs.existsSync(req.file.path)) {
+    fs.unlinkSync(req.file.path);
+  }
+} catch (error) {
+  console.error("❌ Error al subir a Cloudinary:", error);
+  return res.status(500).json({ error: "Error al subir imagen a Cloudinary." });
+}
 
     casa.visitas.push({
       nombreVisitante,
@@ -351,6 +361,7 @@ router.post("/:fraccId/casas/:numero/visitas",upload.single("fotoDni"), async (r
 });
 
 router.get("/:fraccId/casas/:numero/visitas", async (req, res) => {
+  
   try {
     const { fraccId, numero } = req.params;
 
