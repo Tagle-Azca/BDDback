@@ -293,7 +293,7 @@ const cloudinary = require("../config/cloudinary");
 const fs = require("fs");
 const fetch = require("node-fetch");
 
-router.post("/:fraccId/casas/:numero/visitas", upload.single("foto"), async (req, res) => {
+router.post("/:fraccId/casas/:numero/visitas",upload.single("fotoDni"), async (req, res) => {
   try {
     const { fraccId, numero } = req.params;
     const { nombreVisitante, motivo } = req.body;
