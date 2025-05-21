@@ -83,7 +83,7 @@ router.post("/:fraccId/casas/:numero/residentes", async (req, res) => {
     const fracc = await Fraccionamiento.findById(fraccId);
     if (!fracc) return res.status(404).json({ mensaje: "Fraccionamiento no encontrado" });
 
-    const casa = fracc.residencias.find(c => c.numero === parseInt(numero));
+    const casa = fracc.residencias.find(c => c.numero.toString() === numero.toString());
     if (!casa) return res.status(404).json({ mensaje: "Casa no encontrada" });
 
     casa.residentes.push({ nombre, edad, relacion, qrPersonal: uuidv4() });
@@ -237,7 +237,7 @@ router.get("/residencias/:fraccId/:numero", async (req, res) => {
     const fracc = await Fraccionamiento.findById(fraccId);
     if (!fracc) return res.status(404).json({ error: "Fraccionamiento no encontrado" });
 
-    const casa = fracc.residencias.find(c => c.numero === parseInt(numero));
+    const casa = fracc.residencias.find(c => c.numero.toString() === numero.toString());
     if (!casa) return res.status(404).json({ error: "Residencia no encontrada" });
 
     res.status(200).json({ residentes: casa.residentes });
@@ -255,7 +255,7 @@ router.post("/residencias/:fraccId/:numero/login", async (req, res) => {
     const fracc = await Fraccionamiento.findById(fraccId);
     if (!fracc) return res.status(404).json({ error: "Fraccionamiento no encontrado" });
 
-    const casa = fracc.residencias.find(c => c.numero === parseInt(numero));
+    const casa = fracc.residencias.find(c => c.numero.toString() === numero.toString());
     if (!casa) return res.status(404).json({ error: "Residencia no encontrada" });
 
     const residente = casa.residentes.find(r => r._id.toString() === residenteId);
@@ -302,7 +302,7 @@ router.post("/:fraccId/casas/:numero/visitas",upload.single("fotoDni"), async (r
     const fracc = await Fraccionamiento.findById(fraccId);
     if (!fracc) return res.status(404).json({ error: "Fraccionamiento no encontrado" });
 
-    const casa = fracc.residencias.find(c => c.numero === parseInt(numero));
+    const casa = fracc.residencias.find(c => c.numero.toString() === numero.toString());
     if (!casa) return res.status(404).json({ error: "Residencia no encontrada" });
 
     if (!casa.visitas) casa.visitas = [];
