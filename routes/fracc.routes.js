@@ -360,13 +360,21 @@ router.post("/:fraccId/casas/:numero/visitas", upload.single("FotoVisita"), asyn
     };
 
     try {
-      await fetch("https://ingresosbackend.onrender.com/api/notification/send-notification", {
+      const notiResponse = await fetch("https://ingresosbackend.onrender.com/api/notification/send-notification", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(notificacion),
       });
+
+      if (!notiResponse.ok) {
+        const errorData = await notiResponse.json();
+        console.error("❌ Error al enviar notificación:", errorData);
+      } else {
+        const notiResult = await notiResponse.json();
+        console.log("✅ Notificación enviada:", notiResult);
+      }
     } catch (err) {
-      console.error("Error al enviar notificación:", err);
+      console.error("❌ Fallo de red al enviar notificación:", err.message);
     }
 
     res.status(201).json({ mensaje: "Visita registrada con éxito", foto: fotoUrl });
