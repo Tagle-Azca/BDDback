@@ -12,6 +12,7 @@ const casaSchema = new mongoose.Schema({
   numero: { type: Number, required: true },
   qrCasa: { type: String, default: () => uuidv4() }, 
   residentes: { type: [residenteSchema], default: [] },
+  activa: { type: Boolean, default: true } 
 });
 
 const fraccionamientoSchema = new mongoose.Schema({

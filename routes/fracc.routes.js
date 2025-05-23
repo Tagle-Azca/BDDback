@@ -65,7 +65,7 @@ router.post("/:fraccId/casas", async (req, res) => {
     const fracc = await Fraccionamiento.findById(fraccId);
     if (!fracc) return res.status(404).json({ mensaje: "Fraccionamiento no encontrado" });
 
-    const nuevaCasa = { numero, residentes: [] };
+    const nuevaCasa = { numero, residentes: [], activa: true };
     fracc.residencias.push(nuevaCasa);
     await fracc.save();
 
@@ -294,7 +294,7 @@ const cloudinary = require("../config/cloudinary");
 const fs = require("fs");
 const fetch = require("node-fetch");
 
-router.post("/:fraccId/casas/:numero/visitas", upload.single("fotoDni"), async (req, res) => {
+router.post("/:fraccId/casas/:numero/visitas", upload.single("FotoVisita"), async (req, res) => {
   try {
     const { fraccId, numero } = req.params;
     const { nombreVisitante, motivo } = req.body;
@@ -305,6 +305,10 @@ router.post("/:fraccId/casas/:numero/visitas", upload.single("fotoDni"), async (
 
     const casa = fracc.residencias.find(c => c.numero.toString() === numero.toString());
     if (!casa) return res.status(404).json({ error: "Residencia no encontrada" });
+
+    if (!casa.activa) {
+      return res.status(403).json({ error: "La casa está desactivada y no puede recibir visitas." });
+    }
 
     if (!casa.visitas) casa.visitas = [];
 
@@ -383,9 +387,31 @@ router.get("/:fraccId/casas/:numero/visitas", async (req, res) => {
     const casa = fracc.residencias.find(c => c.numero.toString() === numero.toString());
     if (!casa) return res.status(404).json({ error: "Residencia no encontrada" });
 
+    if (!casa.activa) {
+      return res.status(403).json({ error: "La casa está desactivada y no puede recibir visitas." });
+    }
+
     res.status(200).json({ visitas: casa.visitas || [] });
   } catch (error) {
     console.error("Error al obtener visitas:", error);
     res.status(500).json({ error: "Error interno del servidor" });
+  }
+});
+
+router.put("/:fraccId/casas/:numero/toggle", async (req, res) => {
+  try {
+    const { fraccId, numero } = req.params;
+    const fracc = await Fraccionamiento.findById(fraccId);
+    if (!fracc) return res.status(404).json({ error: "Fraccionamiento no encontrado" });
+
+    const casa = fracc.residencias.find(c => c.numero.toString() === numero.toString());
+    if (!casa) return res.status(404).json({ error: "Casa no encontrada" });
+
+    casa.activa = !casa.activa;
+    await fracc.save();
+
+    res.status(200).json({ mensaje: "Estado de casa actualizado", activa: casa.activa });
+  } catch (error) {
+    res.status(500).json({ error: "Error al actualizar estado de la casa" });
   }
 });

@@ -11,6 +11,7 @@ const ResidenciaSchema = new mongoose.Schema({
   fraccionamiento: { type: String, required: true },
   residentes: [ResidenteSchema],
   telefono: { type: String, required: true },
+  activa: { type: Boolean, default: true },
 });
 
 module.exports = mongoose.model("residencias", ResidenciaSchema);

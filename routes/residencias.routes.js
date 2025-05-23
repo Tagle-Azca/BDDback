@@ -17,6 +17,8 @@ router.post("/register-house", async (req, res) => {
     });
   }
 
+  casaDatos.activa = true; 
+
   const result = await registerHouse(fraccionamiento, casaDatos);
 
   if (result.error) {

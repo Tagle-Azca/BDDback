@@ -30,7 +30,10 @@ const registerHouse = async (fraccionamiento, casaDatos) => {
         direccion: casaDatos.direccion,
       },
       {
-        $set: { fraccionamiento: fraccionamientoEncontrado.fraccionamiento },
+        $set: {
+          fraccionamiento: fraccionamientoEncontrado.fraccionamiento,
+          activa: casaDatos.activa ?? true
+        },
         $addToSet: {
           residentes: { $each: nuevosResidentes },
         },
