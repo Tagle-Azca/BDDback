@@ -1,6 +1,34 @@
 const express = require('express');
 const Fraccionamiento = require('../models/fraccionamiento');
 const router = express.Router();    
+const Reporte = require('../models/Reportes');
+
+router.get('/:fraccId/reportes', async (req, res) => {
+  const { fraccId } = req.params;
+  const { casa, desde, hasta } = req.query;
+
+  const filtro = {
+    fraccId,
+  };
+
+  if (casa) {
+    filtro.numeroCasa = casa;
+  }
+
+  if (desde || hasta) {
+    filtro.tiempo = {};
+    if (desde) filtro.tiempo.$gte = new Date(desde);
+    if (hasta) filtro.tiempo.$lte = new Date(hasta);
+  }
+
+  try {
+    const reportes = await Reporte.find(filtro).sort({ tiempo: -1 });
+    res.status(200).json(reportes);
+  } catch (error) {
+    console.error("Error al obtener reportes:", error);
+    res.status(500).json({ error: "Error interno del servidor" });
+  }
+});
 
 router.put('/reportes/:id/autorizar', async (req, res) => {
     try {

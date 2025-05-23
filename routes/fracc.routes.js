@@ -1,5 +1,6 @@
 const express = require("express");
 const Fraccionamiento = require("../models/fraccionamiento");
+const Reporte = require("../models/Reportes");
 const { v4: uuidv4 } = require("uuid");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
@@ -293,7 +294,7 @@ const cloudinary = require("../config/cloudinary");
 const fs = require("fs");
 const fetch = require("node-fetch");
 
-router.post("/:fraccId/casas/:numero/visitas",upload.single("fotoDni"), async (req, res) => {
+router.post("/:fraccId/casas/:numero/visitas", upload.single("fotoDni"), async (req, res) => {
   try {
     const { fraccId, numero } = req.params;
     const { nombreVisitante, motivo } = req.body;
@@ -310,22 +311,33 @@ router.post("/:fraccId/casas/:numero/visitas",upload.single("fotoDni"), async (r
     // esto sube imagen a Cloudinary
     let fotoUrl = null;
     if (!req.file || !req.file.path) {
-  return res.status(400).json({ error: "No se recibió ninguna imagen válida." });
-}
+      return res.status(400).json({ error: "No se recibió ninguna imagen válida." });
+    }
 
-try {
-  const resultado = await cloudinary.uploader.upload(req.file.path, {
-    folder: "visitas",
-  });
-  fotoUrl = resultado.secure_url;
+    try {
+      const resultado = await cloudinary.uploader.upload(req.file.path, {
+        folder: "visitas",
+      });
+      fotoUrl = resultado.secure_url;
 
-  if (fs.existsSync(req.file.path)) {
-    fs.unlinkSync(req.file.path);
-  }
-} catch (error) {
-  console.error("❌ Error al subir a Cloudinary:", error);
-  return res.status(500).json({ error: "Error al subir imagen a Cloudinary." });
-}
+      if (fs.existsSync(req.file.path)) {
+        fs.unlinkSync(req.file.path);
+      }
+    } catch (error) {
+      console.error("❌ Error al subir a Cloudinary:", error);
+      return res.status(500).json({ error: "Error al subir imagen a Cloudinary." });
+    }
+
+    // Crear el reporte después de tener fotoUrl
+    await Reporte.create({
+      fraccId,
+      numeroCasa: numero,
+      nombre: nombreVisitante,
+      motivo,
+      foto: fotoUrl,
+      tiempo: new Date(),
+      estatus: 'pendiente',
+    });
 
     casa.visitas.push({
       nombreVisitante,

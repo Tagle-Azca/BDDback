@@ -1,0 +1,30 @@
+const mongoose = require('mongoose');
+
+const reportesSchema = new mongoose.Schema({
+  fraccId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'fraccionamientos',
+    required: true
+  },
+  numeroCasa: { type: String, required: true },
+  nombre: { type: String, required: true },
+  motivo: { type: String, required: true },
+  foto: { type: String }, // URL de Cloudinary
+  tiempo: { type: Date, default: Date.now },
+  estatus: {
+    type: String,
+    enum: ['pendiente', 'aceptado', 'rechazado'],
+    default: 'pendiente'
+  },
+  autorizadoPor: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'residencias.residentes',
+    default: null
+  },
+  nombreAutorizador: {
+    type: String,
+    default: null
+  }
+});
+
+module.exports = mongoose.model("Reporte", reportesSchema);
