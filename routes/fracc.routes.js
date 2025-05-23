@@ -296,6 +296,9 @@ const fetch = require("node-fetch");
 
 router.post("/:fraccId/casas/:numero/visitas", upload.single("FotoVisita"), async (req, res) => {
   try {
+    console.log("✅ Llegó a la ruta de visitas");
+    console.log("Body:", req.body);
+    console.log("File:", req.file);
     const { fraccId, numero } = req.params;
     const { nombreVisitante, motivo } = req.body;
     const localPath = req.file?.path;
