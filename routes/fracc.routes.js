@@ -300,7 +300,7 @@ router.post("/:fraccId/casas/:numero/visitas", upload.single("FotoVisita"), asyn
     console.log("Body:", req.body);
     console.log("File:", req.file);
     const { fraccId, numero } = req.params;
-    const { nombreVisitante, motivo } = req.body;
+    const { nombre: nombreVisitante, motivo } = req.body;
     const localPath = req.file?.path;
 
     const fracc = await Fraccionamiento.findById(fraccId);
