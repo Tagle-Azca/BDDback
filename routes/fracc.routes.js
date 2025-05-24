@@ -356,7 +356,13 @@ router.post("/:fraccId/casas/:numero/visitas", upload.single("FotoVisita"), asyn
     await fracc.save();
 
     try {
-      console.log("🟡 Enviando notificación a:", fraccId, numero);
+      const notificacion = {
+  title: "Nueva Visita",
+  body: `Visita registrada para la casa ${numero}: ${nombreVisitante} - ${motivo}`,
+  fraccId,
+  residencia: numero,
+  foto: fotoUrl
+};
 
       const response = await fetch("https://ingresosbackend.onrender.com/api/notification/send-notification", {
         method: "POST",
