@@ -355,13 +355,6 @@ router.post("/:fraccId/casas/:numero/visitas", upload.single("FotoVisita"), asyn
 
     await fracc.save();
 
-    const notificacion = {
-      title: "Nueva Visita",
-      body: `Visita registrada para la casa ${numero}: ${nombreVisitante} - ${motivo}`,
-      fraccId,
-      residencia: numero,
-    };
-
     try {
   const notificacion = {
     title: "Nueva Visita",
