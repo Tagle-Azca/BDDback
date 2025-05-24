@@ -31,18 +31,18 @@ console.log("🔐 API Key:", process.env.ONESIGNAL_API_KEY);
 };
 
     const response = await fetch("https://onesignal.com/api/v1/notifications", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Basic ${process.env.ONESIGNAL_API_KEY}`
-      },
-      body: JSON.stringify({
-        app_id: process.env.ONESIGNAL_APP_ID,
-        include_player_ids: playerIds,
-        headings: { en: title },
-        contents: { en: body }
-      })
-    });
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    "Authorization": `Bearer ${process.env.ONESIGNAL_API_KEY}`
+  },
+  body: JSON.stringify({
+    app_id: process.env.ONESIGNAL_APP_ID,
+    include_player_ids: playerIds,
+    headings: { en: title },
+    contents: { en: body }
+  })
+});
 
     const data = await response.json();
     console.log("✅ Respuesta OneSignal:", data);
