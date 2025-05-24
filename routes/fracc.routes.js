@@ -364,7 +364,7 @@ router.post("/:fraccId/casas/:numero/visitas", upload.single("FotoVisita"), asyn
   foto: fotoUrl
 };
 
-      const response = await fetch("https://ingresosbackend.onrender.com/api/notification/send-notification", {
+      const response = await fetch("https://ingresosbackend.onrender.com/api/notifications/send-notification", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(notificacion),
