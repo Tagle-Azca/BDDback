@@ -29,12 +29,11 @@ router.post("/send-notification", async (req, res) => {
       return res.status(404).json({ success: false, message: "No hay playerIds registrados para esta casa" });
     }
 
-    const notification = {
-      app_id: process.env.ONESIGNAL_APP_ID,
-      contents: { en: body },
-      headings: { en: title },
-      include_player_ids: playerIds,
-    };
+   const notification = {
+    contents: { en: body },
+    headings: { en: title },
+    include_player_ids: playerIds,
+  };
 
     const response = await client.createNotification(notification);
     console.log("Notificación enviada:", response.body);
