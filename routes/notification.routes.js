@@ -3,12 +3,10 @@ const OneSignal = require("onesignal-node");
 const router = express.Router();
 
 // Cliente OneSignal
-const client = new OneSignal.Client({
-  app: {
-    appAuthKey: process.env.ONESIGNAL_API_KEY,
-    appId: process.env.ONESIGNAL_APP_ID?.trim(),
-  }
-});
+const client = new OneSignal.Client(
+  process.env.ONESIGNAL_APP_ID?.trim(),
+  process.env.ONESIGNAL_API_KEY?.trim()
+);
 
 const PlayerRegistry = require("../models/playerRegistry");
 
