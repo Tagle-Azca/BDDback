@@ -15,8 +15,19 @@ const app = express();
 
 
 app.use(cors({
-  origin: "https://admin-one-livid.vercel.app",
-  credentials: true,
+  origin: function (origin, callback) {
+    const allowedOrigins = [
+      'http://localhost:3001',
+      'https://admin-one-livid.vercel.app'
+    ];
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error("No permitido por CORS"));
+    }
+  },
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  credentials: true
 }));
 
 app.use(express.json());
