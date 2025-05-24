@@ -1,5 +1,5 @@
 const express = require("express");
-const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
+const fetch = require("node-fetch");
 const router = express.Router();
 
 
@@ -7,9 +7,9 @@ const PlayerRegistry = require("../models/playerRegistry");
 
 router.post("/send-notification", async (req, res) => {
   const { title, body, fraccId, residencia } = req.body;
-  console.log("🔑 App ID:", process.env.ONESIGNAL_APP_ID);
-console.log("🔐 API Key:", process.env.ONESIGNAL_API_KEY);
-
+      console.log("🔑 App ID:", process.env.ONESIGNAL_APP_ID);
+      console.log("🔐 API Key:", process.env.ONESIGNAL_API_KEY);
+      console.log("🔐 Authorization Header:", `Bearer ${process.env.ONESIGNAL_API_KEY?.trim()}`);
   if (!title || !body || !fraccId || !residencia) {
     return res.status(400).send({ success: false, message: "Faltan datos" });
   }
@@ -30,17 +30,21 @@ console.log("🔐 API Key:", process.env.ONESIGNAL_API_KEY);
   include_player_ids: playerIds,
 };
 
-    const response = await fetch("https://onesignal.com/api/v1/notifications", {
+    const response = await fetch("https://onesignal.com/api/v9/notifications", {
   method: "POST",
   headers: {
     "Content-Type": "application/json",
     "Authorization": `Bearer ${process.env.ONESIGNAL_API_KEY}`
   },
   body: JSON.stringify({
-    app_id: process.env.ONESIGNAL_APP_ID,
-    include_player_ids: playerIds,
-    headings: { en: title },
-    contents: { en: body }
+    target: {
+      include_player_ids: playerIds
+    },
+    notification: {
+      title: { en: title },
+      body: { en: body }
+    },
+    app_id: process.env.ONESIGNAL_APP_ID
   })
 });
 
