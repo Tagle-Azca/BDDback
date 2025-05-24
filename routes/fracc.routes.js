@@ -337,14 +337,14 @@ router.post("/:fraccId/casas/:numero/visitas", upload.single("FotoVisita"), asyn
 
     // Crear el reporte después de tener fotoUrl
     await Reporte.create({
-  fraccId,
-  numeroCasa: numero,
-  nombre: nombreVisitante, 
-  motivo,
-  foto: fotoUrl,
-  tiempo: new Date(),
-  estatus: 'pendiente',
-});
+      fraccId,
+      numeroCasa: numero,
+      nombre: nombreVisitante,
+      motivo,
+      foto: fotoUrl,
+      tiempo: new Date(),
+      estatus: 'pendiente',
+    });
 
     casa.visitas.push({
       nombreVisitante,
@@ -356,29 +356,20 @@ router.post("/:fraccId/casas/:numero/visitas", upload.single("FotoVisita"), asyn
     await fracc.save();
 
     try {
-  const notificacion = {
-    title: "Nueva Visita",
-    body: `Visita registrada para la casa ${numero}: ${nombreVisitante} - ${motivo}`,
-    fraccId,
-    residencia: numero,
-    foto: fotoUrl
-  };
+      console.log("🟡 Enviando notificación a:", fraccId, numero);
 
-  console.log("🔔 Enviando notificación:", notificacion);
+      const response = await fetch("https://ingresosbackend.onrender.com/api/notification/send-notification", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(notificacion),
+      });
 
-  const response = await fetch("https://ingresosbackend.onrender.com/api/notification/send-notification", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(notificacion),
-  });
+      const resultado = await response.json();
+      console.log("✅ Respuesta OneSignal:", resultado);
 
-  const resultado = await response.json();
-  console.log("✅ Respuesta OneSignal:", resultado);
-
-} catch (error) {
-  console.error("❌ Error al enviar notificación:", error.message);
-  // Pero **NO hagas return res.status(500)** aquí. Para que no afecte el guardado del reporte.
-}
+    } catch (error) {
+      console.error("❌ Error al enviar notificación:", error.message);
+    }
 
     res.status(201).json({ mensaje: "Visita registrada con éxito", foto: fotoUrl });
   } catch (error) {

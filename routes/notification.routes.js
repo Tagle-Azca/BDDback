@@ -23,6 +23,8 @@ router.post("/send-notification", async (req, res) => {
     const registros = await PlayerRegistry.find({ fraccId, residencia });
     const playerIds = registros.map(r => r.playerId);
 
+    console.log("🟢 playerIds encontrados:", playerIds);
+
     if (!playerIds.length) {
       return res.status(404).json({ success: false, message: "No hay playerIds registrados para esta casa" });
     }
