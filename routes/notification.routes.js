@@ -12,6 +12,8 @@ const PlayerRegistry = require("../models/playerRegistry");
 
 router.post("/send-notification", async (req, res) => {
   const { title, body, fraccId, residencia } = req.body;
+  console.log("🔑 App ID:", process.env.ONESIGNAL_APP_ID);
+console.log("🔐 API Key:", process.env.ONESIGNAL_API_KEY);
 
   if (!title || !body || !fraccId || !residencia) {
     return res.status(400).send({ success: false, message: "Faltan datos" });
