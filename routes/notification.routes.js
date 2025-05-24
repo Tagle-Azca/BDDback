@@ -1,12 +1,7 @@
 const express = require("express");
-const OneSignal = require("onesignal-node");
+const fetch = require("node-fetch");
 const router = express.Router();
 
-// Cliente OneSignal
-const client = new OneSignal.Client(
-  process.env.ONESIGNAL_APP_ID?.trim(),
-  process.env.ONESIGNAL_API_KEY?.trim()
-);
 
 const PlayerRegistry = require("../models/playerRegistry");
 
@@ -35,9 +30,23 @@ console.log("🔐 API Key:", process.env.ONESIGNAL_API_KEY);
   include_player_ids: playerIds,
 };
 
-    const response = await client.createNotification(notification);
-    console.log("Notificación enviada:", response.body);
-    res.status(200).json({ success: true, response: response.body });
+    const response = await fetch("https://onesignal.com/api/v1/notifications", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Basic ${process.env.ONESIGNAL_API_KEY}`
+      },
+      body: JSON.stringify({
+        app_id: process.env.ONESIGNAL_APP_ID,
+        include_player_ids: playerIds,
+        headings: { en: title },
+        contents: { en: body }
+      })
+    });
+
+    const data = await response.json();
+    console.log("✅ Respuesta OneSignal:", data);
+    res.status(200).json({ success: true, response: data });
   } catch (error) {
     console.error("Error al enviar notificación:", error);
     res.status(500).json({ success: false, message: error.message });
