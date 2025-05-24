@@ -30,6 +30,7 @@ router.post("/send-notification", async (req, res) => {
     }
 
     const notification = {
+      app_id: process.env.ONESIGNAL_APP_ID,
       contents: { en: body },
       headings: { en: title },
       include_player_ids: playerIds,
