@@ -6,7 +6,7 @@ const router = express.Router();
 const client = new OneSignal.Client({
   app: {
     appAuthKey: process.env.ONESIGNAL_API_KEY,
-    appId: process.env.ONESIGNAL_APP_ID,
+    appId: process.env.ONESIGNAL_APP_ID?.trim(),
   }
 });
 
@@ -30,10 +30,10 @@ router.post("/send-notification", async (req, res) => {
     }
 
    const notification = {
-    contents: { en: body },
-    headings: { en: title },
-    include_player_ids: playerIds,
-  };
+  contents: { en: body },
+  headings: { en: title },
+  include_player_ids: playerIds,
+};
 
     const response = await client.createNotification(notification);
     console.log("Notificación enviada:", response.body);
