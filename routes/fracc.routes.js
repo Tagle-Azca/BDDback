@@ -337,14 +337,14 @@ router.post("/:fraccId/casas/:numero/visitas", upload.single("FotoVisita"), asyn
 
     // Crear el reporte después de tener fotoUrl
     await Reporte.create({
-      fraccId,
-      numeroCasa: numero,
-      nombre: nombreVisitante,
-      motivo,
-      foto: fotoUrl,
-      tiempo: new Date(),
-      estatus: 'pendiente',
-    });
+  fraccId,
+  numeroCasa: numero,
+  nombre: nombreVisitante, 
+  motivo,
+  foto: fotoUrl,
+  tiempo: new Date(),
+  estatus: 'pendiente',
+});
 
     casa.visitas.push({
       nombreVisitante,
