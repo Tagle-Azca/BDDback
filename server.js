@@ -6,9 +6,9 @@ const cors = require("cors");
 const residenciasRoutes = require("./routes/residencias.routes");
 const authRoutes = require("./routes/adminAuth.routes");
 const fraccRoutes = require("./routes/fracc.routes");
-const notificationRoutes = require("./routes/notification.routes");
 const reportesRoutes = require("./routes/reportes.routes");
 const playerRoutes = require("./routes/player.routes");
+const notidficationRoutes = require("./routes/notifications.routes");
 
 const app = express();
 
@@ -73,9 +73,9 @@ global.latestNotification = null;
 app.use("/api/auth", authRoutes);
 app.use("/api/fracc", fraccRoutes);
 app.use("/api/residencias", residenciasRoutes);
-app.use("/api/notifications", notificationRoutes);
 app.use("/api/reportes", reportesRoutes);
 app.use("/api/player", playerRoutes);
+app.use("/api/notifications", require("./routes/notifications.routes"));
 
 
 const PORT = process.env.PORT || 5002;

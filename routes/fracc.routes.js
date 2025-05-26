@@ -355,27 +355,6 @@ router.post("/:fraccId/casas/:numero/visitas", upload.single("FotoVisita"), asyn
 
     await fracc.save();
 
-    try {
-      const notificacion = {
-  title: "Nueva Visita",
-  body: `Visita registrada para la casa ${numero}: ${nombreVisitante} - ${motivo}`,
-  fraccId,
-  residencia: numero,
-  foto: fotoUrl
-};
-
-      const response = await fetch("https://ingresosbackend.onrender.com/api/notifications/send-notification", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(notificacion),
-      });
-
-      const resultado = await response.json();
-      console.log("✅ Respuesta OneSignal:", resultado);
-
-    } catch (error) {
-      console.error("❌ Error al enviar notificación:", error.message);
-    }
 
     res.status(201).json({ mensaje: "Visita registrada con éxito", foto: fotoUrl });
   } catch (error) {
