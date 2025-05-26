@@ -5,6 +5,9 @@ const Fraccionamiento = require("../models/fraccionamiento");
 
 const ONE_SIGNAL_APP_ID = process.env.ONE_SIGNAL_APP_ID;
 const ONE_SIGNAL_API_KEY = process.env.ONE_SIGNAL_API_KEY;
+const Notificacion = require("../models/notificacion");
+
+
 
 router.post("/send-notification", async (req, res) => {
   try {
@@ -42,11 +45,33 @@ router.post("/send-notification", async (req, res) => {
 
     const resultado = await response.json();
     console.log("✅ Enviado a OneSignal:", resultado);
+    await Notificacion.create({
+  title,
+  body,
+  fraccId,
+  residencia,
+  foto,
+});
 
     res.status(200).json({ mensaje: "Notificación enviada", resultado });
   } catch (error) {
     console.error("❌ Error en notificación:", error.message);
     res.status(500).json({ error: "Error al enviar notificación" });
+  }
+});
+router.get("/:fraccId/:residencia", async (req, res) => {
+  try {
+    const { fraccId, residencia } = req.params;
+
+    const notificaciones = await Notificacion.find({
+      fraccId,
+      residencia,
+    }).sort({ fecha: -1 }); 
+
+    res.status(200).json(notificaciones);
+  } catch (error) {
+    console.error("❌ Error al obtener historial:", error);
+    res.status(500).json({ error: "Error al obtener notificaciones" });
   }
 });
 

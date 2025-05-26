@@ -10,7 +10,6 @@ router.post("/register", async (req, res) => {
   }
 
   try {
-    // Evitar duplicados
     const existe = await PlayerRegistry.findOne({ playerId, fraccId, residencia });
     if (existe) {
       return res.status(200).json({ success: true, message: "Ya registrado" });
