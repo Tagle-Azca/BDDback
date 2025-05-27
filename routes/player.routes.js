@@ -3,25 +3,27 @@ const router = express.Router();
 const PlayerRegistry = require("../models/playerRegistry");
 
 router.post("/register", async (req, res) => {
-  const { playerId, fraccId, residencia } = req.body;
-
-  if (!playerId || !fraccId || !residencia) {
-    return res.status(400).json({ success: false, message: "Faltan datos" });
-  }
-
   try {
-    const existe = await PlayerRegistry.findOne({ playerId, fraccId, residencia });
-    if (existe) {
-      return res.status(200).json({ success: true, message: "Ya registrado" });
-    }
+    const { playerId, fraccId, residencia } = req.body;
 
-    const nuevo = new PlayerRegistry({ playerId, fraccId, residencia });
-    await nuevo.save();
+    const fracc = await Fraccionamiento.findById(fraccId);
+    if (!fracc) return res.status(404).json({ error: "Fraccionamiento no encontrado" });
+
+    const casa = fracc.residencias.find(c => c.numero === parseInt(residencia));
+    if (!casa) return res.status(404).json({ error: "Casa no encontrada" });
+
+    const residentesActivos = casa.residentes.filter(r => r.activo);
+    if (!residentesActivos.length) return res.status(404).json({ error: "No hay residentes activos" });
+
+    residentesActivos.forEach(r => {
+      r.playerId = playerId;
+    });
+    await fracc.save();
 
     res.status(201).json({ success: true, message: "Player registrado correctamente" });
-  } catch (error) {
-    console.error("Error al registrar playerId:", error);
-    res.status(500).json({ success: false, message: "Error del servidor" });
+  } catch (err) {
+    console.error("❌ Error registrando playerId:", err.message);
+    res.status(500).json({ error: "Error al registrar playerId" });
   }
 });
 
