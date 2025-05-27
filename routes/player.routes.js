@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const PlayerRegistry = require("../models/playerRegistry");
+const Fraccionamiento = require("../models/fraccionamiento");
 
 router.post("/register", async (req, res) => {
   try {
