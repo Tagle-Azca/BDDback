@@ -35,14 +35,22 @@ router.post("/send-notification", async (req, res) => {
     const playerIds = residentesActivos.map(r => r.playerId);
     console.log("🎯 Enviando a playerIds:", playerIds);
 
-    const payload = {
+   const payload = {
   app_id: process.env.ONESIGNAL_APP_ID,
   include_player_ids: playerIds,
   headings: { en: title },
   contents: { en: body },
   big_picture: foto,
   data: { fraccId, residencia, foto },
+
+  android_sound: "default",
+  ios_sound: "default",
+  priority: 10,
+  android_channel_id: "default",
+  ios_badgeType: "Increase",
+  ios_badgeCount: 1,
 };
+
 
 const response = await fetch("https://onesignal.com/api/v1/notifications", {
   method: "POST",
