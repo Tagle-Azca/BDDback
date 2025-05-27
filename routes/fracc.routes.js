@@ -358,7 +358,7 @@ router.post("/:fraccId/casas/:numero/visitas", upload.single("FotoVisita"), asyn
         method: "POST",
         headers: {
   "Content-Type": "application/json",
-  "Authorization": `Basic ${process.env.ONESIGNAL_API_KEY}`
+  "Authorization": `Bearer ${process.env.ONESIGNAL_API_KEY}`
 },
         body: JSON.stringify({
           title: "Nueva Visita",

@@ -48,7 +48,7 @@ const response = await fetch("https://onesignal.com/api/v1/notifications", {
   method: "POST",
   headers: {
   "Content-Type": "application/json",
-  "Authorization": `Basic ${process.env.ONESIGNAL_API_KEY}`
+  "Authorization": `Bearer ${process.env.ONESIGNAL_API_KEY}`
 },
   body: JSON.stringify(payload),
 });
