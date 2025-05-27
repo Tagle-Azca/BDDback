@@ -4,8 +4,8 @@ const fetch = require("node-fetch");
 const Fraccionamiento = require("../models/fraccionamiento");
 const Notificacion = require("../models/Notification");
 
-const ONESIGNAL_APP_ID = process.env.ONESIGNAL_APP_ID;
-const ONESIGNAL_API_KEY = process.env.ONESIGNAL_API_KEY;
+const ONESIGNAL_APP_ID = process.env.ONESINGAL_APP_ID;
+const ONESIGNAL_API_KEY = process.env.ONESINGAL_API_KEY;
 
 router.post("/send-notification", async (req, res) => {
   console.log("🔔 Intentando enviar notificación...");
