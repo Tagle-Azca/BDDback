@@ -36,22 +36,22 @@ router.post("/send-notification", async (req, res) => {
     console.log("🎯 Enviando a playerIds:", playerIds);
 
     const payload = {
-      app_id: ONESIGNAL_APP_ID,
-      include_player_ids: playerIds,
-      headings: { en: title },
-      contents: { en: body },
-      big_picture: foto,
-      data: { fraccId, residencia, foto },
-    };
+  app_id: process.env.ONESIGNAL_APP_ID,
+  include_player_ids: playerIds,
+  headings: { en: title },
+  contents: { en: body },
+  big_picture: foto,
+  data: { fraccId, residencia, foto },
+};
 
-    const response = await fetch("https://onesignal.com/api/v1/notifications", {
-      method: "POST",
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${ONESIGNAL_API_KEY}`
-      },
-      body: JSON.stringify(payload),
-    });
+const response = await fetch("https://onesignal.com/api/v1/notifications", {
+  method: "POST",
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${process.env.ONESIGNAL_API_KEY}`
+  },
+  body: JSON.stringify(payload),
+});
 
     const resultado = await response.json();
     console.log("📬 Respuesta de OneSignal:", resultado);
