@@ -352,7 +352,26 @@ router.post("/:fraccId/casas/:numero/visitas", upload.single("FotoVisita"), asyn
       foto: fotoUrl,
       fecha: new Date(),
     });
-
+    console.log("📤 Intentando enviar notificación a OneSignal...");
+    try {
+      const notificationResponse = await fetch("https://ingresosbackend.onrender.com/api/notifications/send-notification", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          title: "Nueva Visita",
+          body: `Visita registrada para la casa ${numero}: ${nombreVisitante} - ${motivo}`,
+          fraccId,
+          residencia: numero,
+          foto: fotoUrl,
+        }),
+      });
+      const notificationResult = await notificationResponse.json();
+      console.log("📩 Resultado de notificación:", notificationResult);
+    } catch (err) {
+      console.error("❌ Error al enviar la notificación:", err);
+    }
     await fracc.save();
 
 
