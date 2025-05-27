@@ -357,9 +357,9 @@ router.post("/:fraccId/casas/:numero/visitas", upload.single("FotoVisita"), asyn
       const notificationResponse = await fetch("https://ingresosbackend.onrender.com/api/notifications/send-notification", {
         method: "POST",
         headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${process.env.ONESIGNAL_API_KEY}`,
-        },
+  "Content-Type": "application/json",
+  "Authorization": `Basic ${process.env.ONESIGNAL_API_KEY}`
+},
         body: JSON.stringify({
           title: "Nueva Visita",
           body: `Visita registrada para la casa ${numero}: ${nombreVisitante} - ${motivo}`,
