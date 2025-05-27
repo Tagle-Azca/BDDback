@@ -48,7 +48,7 @@ router.post("/send-notification", async (req, res) => {
       method: "POST",
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Basic ${ONESIGNAL_API_KEY}`
+        'Authorization': `Bearer ${ONESIGNAL_API_KEY}`
       },
       body: JSON.stringify(payload),
     });
