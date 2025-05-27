@@ -4,7 +4,7 @@ const fetch = require("node-fetch");
 const Fraccionamiento = require("../models/fraccionamiento");
 const ONE_SIGNAL_APP_ID = process.env.ONE_SIGNAL_APP_ID;
 const ONE_SIGNAL_API_KEY = process.env.ONE_SIGNAL_API_KEY;
-const Notificacion = require("../models/notificacion");
+const Notificacion = require("../models/Notification");
 
 
 
