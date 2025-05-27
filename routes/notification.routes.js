@@ -47,9 +47,9 @@ router.post("/send-notification", async (req, res) => {
     const response = await fetch("https://onesignal.com/api/v1/notifications", {
       method: "POST",
       headers: {
-        "Content-Type": "application/json",
-        Authorization: `Basic ${ONESIGNAL_API_KEY}`,
-      },
+  'Content-Type': 'application/json',
+  'Authorization': `Basic ${process.env.ONESIGNAL_REST_API_KEY}`
+},
       body: JSON.stringify(payload),
     });
 
