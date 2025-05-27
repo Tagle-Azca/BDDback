@@ -30,6 +30,7 @@ router.post("/send-notification", async (req, res) => {
       include_player_ids: playerIds,
       headings: { en: title },
       contents: { en: body },
+      big_picture: foto, 
       data: { fraccId, residencia, foto },
     };
 
