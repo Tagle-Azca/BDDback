@@ -4,8 +4,8 @@ const fetch = require("node-fetch");
 const Fraccionamiento = require("../models/fraccionamiento");
 const Notificacion = require("../models/Notification");
 
-const ONE_SIGNAL_APP_ID = process.env.ONESIGNAL_APP_ID;
-const ONE_SIGNAL_API_KEY = process.env.ONE_SIGNAL_API_KEY;
+const ONESIGNAL_APP_ID = process.env.ONESIGNAL_APP_ID;
+const ONESIGNAL_API_KEY = process.env.ONESIGNAL_API_KEY;
 
 router.post("/send-notification", async (req, res) => {
   console.log("🔔 Intentando enviar notificación...");
@@ -36,7 +36,7 @@ router.post("/send-notification", async (req, res) => {
     console.log("🎯 Enviando a playerIds:", playerIds);
 
     const payload = {
-      app_id: ONE_SIGNAL_APP_ID,
+      app_id: ONESIGNAL_APP_ID,
       include_player_ids: playerIds,
       headings: { en: title },
       contents: { en: body },
@@ -48,7 +48,7 @@ router.post("/send-notification", async (req, res) => {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Basic ${ONE_SIGNAL_API_KEY}`,
+        Authorization: `Basic ${ONESIGNAL_API_KEY}`,
       },
       body: JSON.stringify(payload),
     });
