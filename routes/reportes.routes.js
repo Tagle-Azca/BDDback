@@ -9,8 +9,8 @@ router.get('/:fraccId/reportes', async (req, res) => {
   const { casa, desde, hasta } = req.query;
 
   const filtro = {
-    fraccId: mongoose.Types.ObjectId(fraccId),
-  };
+  fraccId: new mongoose.Types.ObjectId(fraccId),
+};
 
   if (casa) {
     filtro.numeroCasa = casa;
