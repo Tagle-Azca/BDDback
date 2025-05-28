@@ -1,4 +1,5 @@
 const express = require('express');
+const mongoose = require("mongoose");
 const Fraccionamiento = require('../models/fraccionamiento');
 const router = express.Router();    
 const Reporte = require('../models/Reportes');
@@ -8,7 +9,7 @@ router.get('/:fraccId/reportes', async (req, res) => {
   const { casa, desde, hasta } = req.query;
 
   const filtro = {
-    fraccId,
+    fraccId: mongoose.Types.ObjectId(fraccId),
   };
 
   if (casa) {
