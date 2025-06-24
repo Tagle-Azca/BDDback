@@ -353,6 +353,13 @@ router.post("/:fraccId/casas/:numero/visitas", upload.single("FotoVisita"), asyn
       fecha: new Date(),
     });
     console.log("📤 Intentando enviar notificación a OneSignal...");
+
+    if (!process.env.ONESIGNAL_API_KEY) {
+      console.error("❌ ONESIGNAL_API_KEY no definida");
+    } else {
+      console.log("🔑 API KEY:", process.env.ONESIGNAL_API_KEY);
+    }
+
     try {
       const notificationResponse = await fetch("https://ingresosbackend.onrender.com/api/notifications/send-notification", {
         method: "POST",
@@ -368,8 +375,9 @@ router.post("/:fraccId/casas/:numero/visitas", upload.single("FotoVisita"), asyn
           foto: fotoUrl,
         }),
       });
-      const notificationResult = await notificationResponse.json();
-      console.log("📩 Resultado de notificación:", notificationResult);
+      console.log("📩 Resultado de notificación:", notificationResponse.status);
+      const notificationData = await notificationResponse.json();
+      console.log("📨 Detalles:", notificationData);
     } catch (err) {
       console.error("❌ Error al enviar la notificación:", err);
     }
