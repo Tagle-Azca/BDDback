@@ -46,6 +46,8 @@ router.post("/send-notification", async (req, res) => {
   priority: 10,
   ios_badgeType: "Increase",
   ios_badgeCount: 1,
+  ios_sound: "default",
+  android_sound: "default"
 };
 
 
