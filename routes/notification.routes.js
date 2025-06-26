@@ -42,13 +42,14 @@ router.post("/send-notification", async (req, res) => {
   contents: { en: body },
   big_picture: foto,
   data: { fraccId, residencia, foto },
-
   ios_badgeType: "Increase",
   ios_badgeCount: 1,
   ios_sound: "default",
+  android_sound: "default",
+  android_channel_id: "default",
+  priority: 10,
   content_available: true,
-  mutable_content: true,
-  priority: 10
+  ios_interruption_level: "active"
 };
 
 
