@@ -335,7 +335,7 @@ router.post("/:fraccId/casas/:numero/visitas", upload.single("FotoVisita"), asyn
       return res.status(500).json({ error: "Error al subir imagen a Cloudinary." });
     }
 
-    // Crear el reporte después de tener fotoUrl
+    // Crear el reporte 
     await Reporte.create({
       fraccId,
       numeroCasa: numero,

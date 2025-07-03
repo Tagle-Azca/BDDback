@@ -13,7 +13,7 @@ const reportesSchema = new mongoose.Schema({
   tiempo: { type: Date, default: Date.now },
   estatus: {
     type: String,
-    enum: ['pendiente', 'aceptado', 'rechazado'],
+    enum: ['pendiente', 'aceptado', 'rechazado', 'cancelado'],
     default: 'pendiente'
   },
   autorizadoPor: {
