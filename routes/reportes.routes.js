@@ -48,7 +48,7 @@ router.put('/reportes/:id/autorizar', async (req, res) => {
   
       const residente = residencia.residentes.find(r => r.residenteId === residenteId);
   
-      const reporte = await Reportes.findByIdAndUpdate(
+      const reporte = await Reporte.findByIdAndUpdate(
         req.params.id,
         {
           estatus,
