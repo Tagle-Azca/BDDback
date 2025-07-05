@@ -35,7 +35,8 @@ router.put('/reportes/:id/autorizar', async (req, res) => {
     try {
       const { residenteId, estatus } = req.body;
   
-      if (!['aceptado', 'rechazado'].includes(estatus)) {
+      const estatusFormateado = estatus?.toUpperCase();
+      if (!['ACEPTADO', 'RECHAZADO'].includes(estatusFormateado)) {
         return res.status(400).json({ error: 'Estatus inválido' });
       }
   
@@ -51,7 +52,7 @@ router.put('/reportes/:id/autorizar', async (req, res) => {
       const reporte = await Reporte.findByIdAndUpdate(
         req.params.id,
         {
-          estatus,
+          estatus: estatusFormateado,
           autorizadoPor: residenteId,
           nombreAutorizador: residente.nombre
         },
