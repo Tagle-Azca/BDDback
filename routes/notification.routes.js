@@ -83,4 +83,43 @@ router.get("/:fraccId/:residencia", async (req, res) => {
   }
 });
 
+router.post("/responder", async (req, res) => {
+  const { id, respuesta } = req.body;
+
+  if (!["ACEPTADO", "CANCELADO"].includes(respuesta)) {
+    return res.status(400).json({ error: "Respuesta inválida" });
+  }
+
+  try {
+    const noti = await Notificacion.findById(id);
+    if (!noti) {
+      return res.status(404).json({ error: "Notificación no encontrada" });
+    }
+
+    noti.resultado = respuesta;
+    await noti.save();
+
+    res.status(200).json({ mensaje: "Respuesta registrada correctamente" });
+  } catch (error) {
+    console.error("❌ Error al registrar respuesta:", error);
+    res.status(500).json({ error: "Error al registrar respuesta" });
+  }
+});
+
+// Tarea de limpieza para marcar como IGNORADO tras 10 minutos
+setInterval(async () => {
+  const hace10Min = new Date(Date.now() - 10 * 60 * 1000);
+  try {
+    const actualizadas = await Notificacion.updateMany(
+      { resultado: "PENDIENTE", fecha: { $lte: hace10Min } },
+      { resultado: "IGNORADO" }
+    );
+    if (actualizadas.modifiedCount > 0) {
+      console.log(`🕒 ${actualizadas.modifiedCount} notificaciones marcadas como IGNORADO`);
+    }
+  } catch (e) {
+    console.error("🧨 Error al marcar notificaciones como ignoradas:", e.message);
+  }
+}, 60 * 1000); // Corre cada minuto
+
 module.exports = router;
