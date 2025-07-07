@@ -1,15 +1,30 @@
 const Reporte = require('../models/reportes.models');
+const sendNotification = require('./notification.contoller'); 
 
 const crearReporte = async (req, res) => {
   try {
-    const { nombre, motivo } = req.body;
+    const { nombre, motivo, numeroCasa, foto, playerId } = req.body;
 
-    if (!nombre || !motivo) {
+    if (!nombre || !motivo || !numeroCasa || !playerId) {
       return res.status(400).json({ message: 'Faltan campos obligatorios.' });
     }
 
-    const nuevoReporte = new Reporte({ nombre, motivo });
+    const nuevoReporte = new Reporte({ nombre, motivo, numeroCasa, foto });
     await nuevoReporte.save();
+
+    const notificationData = {
+      headings: { en: 'Nueva Visita' },
+      contents: { en: `Visita registrada para la casa ${numeroCasa}: ${nombre} - ${motivo}` },
+      include_player_ids: [playerId],
+      data: {
+        id: nuevoReporte._id.toString(), 
+        nombre,
+        motivo,
+        foto: foto || '',
+      },
+    };
+
+    await sendNotification(notificationData);
 
     res.status(201).json({ message: 'Reporte creado correctamente', data: nuevoReporte });
   } catch (error) {
@@ -17,17 +32,6 @@ const crearReporte = async (req, res) => {
     res.status(500).json({ message: 'Error al guardar el reporte' });
   }
 };
-
-const obtenerReportes = async (req, res) => {
-  try {
-    const reportes = await Reporte.find().sort({ tiempo: -1 });
-    res.status(200).json(reportes);
-  } catch (error) {
-    console.error('❌ Error al obtener reportes:', error);
-    res.status(500).json({ message: 'Error al obtener los reportes' });
-  }
-};
-
 module.exports = {
   crearReporte,
   obtenerReportes,
