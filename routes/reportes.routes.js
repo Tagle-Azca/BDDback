@@ -8,6 +8,14 @@ router.get('/:fraccId/reportes', async (req, res) => {
   const { fraccId } = req.params;
   const { casa, desde, hasta } = req.query;
 
+  const hoy = new Date();
+  const haceUnMes = new Date(hoy);
+  haceUnMes.setMonth(hoy.getMonth() - 1);
+  const haceDosMeses = new Date(hoy);
+  haceDosMeses.setMonth(hoy.getMonth() - 2);
+  const haceTresMeses = new Date(hoy);
+  haceTresMeses.setMonth(hoy.getMonth() - 3);
+
   const filtro = {
   fraccId: new mongoose.Types.ObjectId(fraccId),
 };
@@ -18,7 +26,11 @@ router.get('/:fraccId/reportes', async (req, res) => {
 
   if (desde || hasta) {
     filtro.tiempo = {};
-    if (desde) filtro.tiempo.$gte = new Date(desde);
+    if (desde === '1') filtro.tiempo.$gte = haceUnMes;
+    else if (desde === '2') filtro.tiempo.$gte = haceDosMeses;
+    else if (desde === '3') filtro.tiempo.$gte = haceTresMeses;
+    else if (desde) filtro.tiempo.$gte = new Date(desde);
+
     if (hasta) filtro.tiempo.$lte = new Date(hasta);
   }
 
@@ -36,7 +48,7 @@ router.put('/reportes/:id/autorizar', async (req, res) => {
       const { residenteId, estatus } = req.body;
   
       const estatusFormateado = estatus?.toUpperCase();
-      if (!['ACEPTADO', 'RECHAZADO'].includes(estatusFormateado)) {
+      if (!['ACEPTADO', 'RECHAZADO', 'IGNORADO'].includes(estatusFormateado)) {
         return res.status(400).json({ error: 'Estatus inválido' });
       }
   
