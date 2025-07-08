@@ -73,6 +73,16 @@ const obtenerPendientePorCasa = async (req, res) => {
   }
 };
 
+const obtenerReportes = async (req, res) => {
+  try {
+    const reportes = await Reporte.find().sort({ tiempo: -1 });
+    res.status(200).json(reportes);
+  } catch (error) {
+    console.error('❌ Error al obtener reportes:', error);
+    res.status(500).json({ message: 'Error al obtener los reportes' });
+  }
+};
+
 module.exports = {
   crearReporte,
   obtenerReportes,
