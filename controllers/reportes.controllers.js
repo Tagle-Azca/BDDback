@@ -32,7 +32,28 @@ const crearReporte = async (req, res) => {
     res.status(500).json({ message: 'Error al guardar el reporte' });
   }
 };
+
+const actualizarReporte = async (req, res) => {
+  const { idReporte, resultado } = req.body;
+
+  try {
+    const actualizado = await Reporte.findByIdAndUpdate(idReporte, {
+      estatus: resultado,
+    });
+
+    if (!actualizado) {
+      return res.status(404).json({ message: 'Reporte no encontrado' });
+    }
+
+    res.json({ message: 'Reporte actualizado', data: actualizado });
+  } catch (error) {
+    console.error('❌ Error al actualizar reporte:', error);
+    res.status(500).json({ message: 'Error al actualizar reporte' });
+  }
+};
+
 module.exports = {
   crearReporte,
   obtenerReportes,
+  actualizarReporte,
 };
