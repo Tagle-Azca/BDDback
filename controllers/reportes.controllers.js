@@ -52,8 +52,30 @@ const actualizarReporte = async (req, res) => {
   }
 };
 
+const obtenerPendientePorCasa = async (req, res) => {
+  const { fraccId, numeroCasa } = req.params;
+
+  try {
+    const reportePendiente = await Reporte.findOne({
+      fraccId,
+      numeroCasa,
+      estatus: 'pendiente',
+    }).sort({ tiempo: -1 });
+
+    if (!reportePendiente) {
+      return res.status(404).json({ message: 'No hay reportes pendientes' });
+    }
+
+    res.status(200).json(reportePendiente);
+  } catch (error) {
+    console.error('❌ Error al obtener reporte pendiente:', error);
+    res.status(500).json({ message: 'Error interno del servidor' });
+  }
+};
+
 module.exports = {
   crearReporte,
   obtenerReportes,
   actualizarReporte,
+  obtenerPendientePorCasa,
 };

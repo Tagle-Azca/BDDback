@@ -3,6 +3,12 @@ const mongoose = require("mongoose");
 const Fraccionamiento = require('../models/fraccionamiento');
 const router = express.Router();    
 const Reporte = require('../models/Reportes');
+const {
+  crearReporte,
+  obtenerReportes,
+  actualizarReporte,
+  obtenerPendientePorCasa
+} = require('../controllers/reportes.controllers');
 
 router.get('/:fraccId/reportes', async (req, res) => {
   const { fraccId } = req.params;
@@ -129,5 +135,6 @@ router.post('/reportes/actualizar', async (req, res) => {
   }
 });
 
+router.get('/reportes/pendiente/:fraccId/:numeroCasa', obtenerPendientePorCasa);
 
 module.exports = router;
