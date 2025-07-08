@@ -1,4 +1,4 @@
-const Reporte = require('../models/reportes.models');
+const Reporte = require('../models/Reportes');
 const sendNotification = require('./notification.contoller'); 
 
 const crearReporte = async (req, res) => {
