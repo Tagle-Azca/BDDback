@@ -17,7 +17,7 @@ const crearReporte = async (req, res) => {
       contents: { en: `Visita registrada para la casa ${numeroCasa}: ${nombre} - ${motivo}` },
       include_player_ids: [playerId],
       data: {
-        id: nuevoReporte._id.toString(), 
+        id: nuevoReporte._id.toString(),
         nombre,
         motivo,
         foto: foto || '',
