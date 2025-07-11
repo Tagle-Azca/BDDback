@@ -6,7 +6,6 @@ const Reporte = require('../models/Reportes');
 const {
   crearReporte,
   obtenerReportes,
-  actualizarReporte,
   obtenerPendientePorCasa
 } = require('../controllers/reportes.controllers');
 
@@ -109,29 +108,6 @@ router.put("/:fraccId", async (req, res) => {
   } catch (error) {
     console.error("Error al actualizar fraccionamiento:", error);
     res.status(500).json({ error: "Error interno del servidor" });
-  }
-});
-
-router.post('/reportes/actualizar', async (req, res) => {
-  try {
-    const { idReporte, resultado } = req.body;
-
-    if (!['ACEPTADO', 'RECHAZADO', 'CANCELADO'].includes(resultado?.toUpperCase())) {
-      return res.status(400).json({ error: 'Resultado inválido' });
-    }
-
-    const reporte = await Reporte.findByIdAndUpdate(
-      idReporte,
-      { estatus: resultado.toUpperCase() },
-      { new: true }
-    );
-
-    if (!reporte) return res.status(404).json({ error: 'Reporte no encontrado' });
-
-    res.status(200).json({ mensaje: 'Reporte actualizado', data: reporte });
-  } catch (err) {
-    console.error('❌ Error al actualizar el reporte:', err);
-    res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
 
