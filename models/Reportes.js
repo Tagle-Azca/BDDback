@@ -9,7 +9,7 @@ const reportesSchema = new mongoose.Schema({
   numeroCasa: { type: String, required: true },
   nombre: { type: String, required: true },
   motivo: { type: String, required: true },
-  foto: { type: String }, // URL de Cloudinary
+  foto: { type: String },
   tiempo: { type: Date, default: Date.now },
   estatus: {
     type: String,

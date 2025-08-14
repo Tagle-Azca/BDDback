@@ -1,125 +1,126 @@
+require("dotenv").config();
 const express = require("express");
-const router = express.Router();
-const fetch = require("node-fetch");
-const Fraccionamiento = require("../models/fraccionamiento");
-const Notificacion = require("../models/Notification");
+const mongoose = require("mongoose");
+const cors = require("cors");
+const http = require("http");
+const socketIo = require("socket.io");
 
-const ONESIGNAL_APP_ID = process.env.ONESIGNAL_APP_ID;
-const ONESIGNAL_API_KEY = process.env.ONESIGNAL_API_KEY;
+const residenciasRoutes = require("./routes/residencias.routes");
+const authRoutes = require("./routes/adminAuth.routes");
+const fraccRoutes = require("./routes/fracc.routes");
+const reportesRoutes = require("./routes/reportes.routes");
+const playerRoutes = require("./routes/player.routes");
+const notificationRoutes = require("./routes/notification.routes");
 
-router.post("/send-notification", async (req, res) => {
-  console.log("🔔 Intentando enviar notificación...");
+const app = express();
+const server = http.createServer(app);
 
-  try {
-    const { title, body, fraccId, residencia, foto } = req.body;
-    console.log("📝 Datos recibidos:", { title, body, fraccId, residencia, foto });
-
-    const fracc = await Fraccionamiento.findById(fraccId);
-    if (!fracc) {
-      console.error("❌ Fraccionamiento no encontrado");
-      return res.status(404).json({ error: "Fraccionamiento no encontrado" });
-    }
-
-    const casa = fracc.residencias.find(c => c.numero.toString() === residencia.toString());
-    if (!casa) {
-      console.error("❌ Casa no encontrada");
-      return res.status(404).json({ error: "Casa no encontrada" });
-    }
-
-    const residentesActivos = casa.residentes.filter(r => r.activo && r.playerId);
-    if (!residentesActivos.length) {
-      console.warn("⚠️ No hay residentes activos con playerId");
-      return res.status(400).json({ error: "No hay residentes activos con playerId" });
-    }
-
-    const playerIds = residentesActivos.map(r => r.playerId);
-    console.log("🎯 Enviando a playerIds:", playerIds);
-
-   const payload = {
-    app_id: process.env.ONESIGNAL_APP_ID,
-    include_player_ids: playerIds,
-    headings: { en: title },
-    contents: { en: body },
-    big_picture: foto,
-    data: { fraccId, residencia, foto },
-    ios_sound: "default",
-    ios_badgeType: "Increase",
-    ios_badgeCount: 1
-  };
-
-
-const response = await fetch("https://onesignal.com/api/v1/notifications", {
-  method: "POST",
-  headers: {
-  "Content-Type": "application/json",
-  "Authorization": `Basic ${process.env.ONESIGNAL_API_KEY}`
-},
-  body: JSON.stringify(payload),
-});
-
-    const resultado = await response.json();
-    console.log("📬 Respuesta de OneSignal:", resultado);
-
-    await Notificacion.create({ title, body, fraccId, residencia, foto });
-
-    res.status(200).json({ mensaje: "Notificación enviada", resultado });
-  } catch (error) {
-    console.error("💥 Error en notificación:", error.message);
-    res.status(500).json({ error: "Error al enviar notificación" });
+// 🔌 Configurar Socket.io
+const io = socketIo(server, {
+  cors: {
+    origin: [
+      'http://localhost:3001',
+      'https://admin-one-livid.vercel.app',
+      '*' // Para permitir conexiones desde Flutter (en producción especifica tu dominio)
+    ],
+    methods: ["GET", "POST"],
+    credentials: true
   }
 });
 
-router.get("/:fraccId/:residencia", async (req, res) => {
-  try {
-    const { fraccId, residencia } = req.params;
-    console.log(`📥 Consultando historial para fraccId: ${fraccId}, residencia: ${residencia}`);
+// 📡 Lógica de Socket.io
+io.on('connection', (socket) => {
+  console.log(`📱 Usuario conectado: ${socket.id}`);
 
-    const notificaciones = await Notificacion.find({ fraccId, residencia }).sort({ fecha: -1 });
+  // Usuario se une a su casa
+  socket.on('joinHouse', ({ numeroCasa, fraccId, userId }) => {
+    const room = `casa_${numeroCasa}_${fraccId}`;
+    socket.join(room);
+    console.log(`🏠 Usuario ${userId || socket.id} se unió a ${room}`);
+  });
 
-    res.status(200).json(notificaciones);
-  } catch (error) {
-    console.error("❌ Error al obtener historial:", error);
-    res.status(500).json({ error: "Error al obtener notificaciones" });
-  }
+  // Usuario se desconecta
+  socket.on('disconnect', () => {
+    console.log(`📱 Usuario desconectado: ${socket.id}`);
+  });
 });
 
-router.post("/responder", async (req, res) => {
-  const { id, respuesta } = req.body;
+// 🌐 Hacer el io accesible globalmente
+global.io = io;
 
-  if (!["ACEPTADO", "CANCELADO"].includes(respuesta)) {
-    return res.status(400).json({ error: "Respuesta inválida" });
+// 📢 Función helper para emitir a casas específicas
+global.emitToHouse = (numeroCasa, fraccId, event, data) => {
+  if (global.io) {
+    const room = `casa_${numeroCasa}_${fraccId}`;
+    global.io.to(room).emit(event, data);
+    console.log(`📢 Emitiendo ${event} a ${room}:`, data);
   }
+};
 
-  try {
-    const noti = await Notificacion.findById(id);
-    if (!noti) {
-      return res.status(404).json({ error: "Notificación no encontrada" });
+app.use(cors({
+  origin: function (origin, callback) {
+    const allowedOrigins = [
+      'http://localhost:3001',
+      'https://admin-one-livid.vercel.app'
+    ];
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error("No permitido por CORS"));
     }
+  },
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  credentials: true
+}));
 
-    noti.resultado = respuesta;
-    await noti.save();
+app.use(express.json());
 
-    res.status(200).json({ mensaje: "Respuesta registrada correctamente" });
-  } catch (error) {
-    console.error("❌ Error al registrar respuesta:", error);
-    res.status(500).json({ error: "Error al registrar respuesta" });
-  }
+const MONGO_URI = process.env.MONGO_URI;
+
+if (!MONGO_URI) {
+  console.error(
+    "Error: La URI de conexión a MongoDB no está definida en el archivo .env"
+  );
+  process.exit(1);
+}
+
+mongoose
+  .connect(MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
+  .then(() => console.log(`
+    ⠀⠀⠀⠀
+                    .  
+                   .'.
+                   |o|
+                  .'o'.
+                  |.-.|
+                  '   '
+                   ( )
+                    )
+                   ( )
+
+
+    Connected to MongoDB successfully!
+    `))
+  
+  .catch((err) => {
+    console.error("!!!!Error conectando a MongoDB:", err);
+    process.exit(1);
+  });
+
+global.latestNotification = null;
+
+app.use("/api/auth", authRoutes);
+app.use("/api/fracc", fraccRoutes);
+app.use("/api/residencias", residenciasRoutes);
+app.use("/api/reportes", reportesRoutes);
+app.use("/api/player", playerRoutes);
+app.use("/api/notifications", notificationRoutes);
+
+const PORT = process.env.PORT || 5002;
+
+// 🚀 Iniciar servidor
+server.listen(PORT, "0.0.0.0", () => {
+  console.log(`🚀 Servidor corriendo en puerto ${PORT}`);
+  console.log(`🔌 WebSocket habilitado`);
+  console.log(`🌐 CORS configurado para Flutter y Admin`);
 });
-
-// Tarea de limpieza para marcar como IGNORADO tras 10 minutos
-setInterval(async () => {
-  const hace10Min = new Date(Date.now() - 10 * 60 * 1000);
-  try {
-    const actualizadas = await Notificacion.updateMany(
-      { resultado: "PENDIENTE", fecha: { $lte: hace10Min } },
-      { resultado: "IGNORADO" }
-    );
-    if (actualizadas.modifiedCount > 0) {
-      console.log(`🕒 ${actualizadas.modifiedCount} notificaciones marcadas como IGNORADO`);
-    }
-  } catch (e) {
-    console.error("🧨 Error al marcar notificaciones como ignoradas:", e.message);
-  }
-}, 60 * 1000); // Corre cada minuto
-
-module.exports = router;

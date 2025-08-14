@@ -3,6 +3,7 @@ const mongoose = require("mongoose");
 const Fraccionamiento = require('../models/fraccionamiento');
 const router = express.Router();    
 const Reporte = require('../models/Reportes');
+const { emitToHouse } = require('../socket/socketHandler'); 
 const {
   crearReporte,
   obtenerReportes,
@@ -110,6 +111,69 @@ router.put("/:fraccId", async (req, res) => {
     res.status(500).json({ error: "Error interno del servidor" });
   }
 });
+// ✅ MODIFICADO: Endpoint con WebSocket
+router.put('/actualizarReporte', async (req, res) => {
+  try {
+    const { resultado, idReporte, userId } = req.body;
+    
+    console.log("📥 Actualizando reporte desde app:", { resultado, idReporte, userId });
+
+    if (!['ACEPTADO', 'RECHAZADO', 'CANCELADO'].includes(resultado)) {
+      return res.status(400).json({ error: 'Resultado inválido' });
+    }
+
+    if (!idReporte) {
+      return res.status(400).json({ error: 'ID de reporte requerido' });
+    }
+
+    // Buscar el reporte
+    const reporte = await Reporte.findById(idReporte);
+    if (!reporte) {
+      return res.status(404).json({ error: 'Reporte no encontrado' });
+    }
+
+    // Mapear resultado a estatus del modelo
+    const estatusMap = {
+      'ACEPTADO': 'aceptado',
+      'RECHAZADO': 'rechazado', 
+      'CANCELADO': 'cancelado'
+    };
+
+    // Actualizar reporte
+    const estatusAnterior = reporte.estatus;
+    reporte.estatus = estatusMap[resultado];
+    reporte.autorizadoPor = userId || 'app-user';
+    reporte.nombreAutorizador = userId ? `Usuario ${userId.split('_').pop().substring(0, 6)}` : 'Usuario App';
+    
+    await reporte.save();
+
+    console.log(`✅ Reporte ${idReporte} actualizado: ${reporte.estatus} por ${reporte.nombreAutorizador}`);
+    
+    // 🚀 NUEVO: Emitir a todos los usuarios de la casa
+    if (global.emitToHouse) {
+      global.emitToHouse(reporte.numeroCasa, reporte.fraccId.toString(), 'reporteActualizado', {
+        reporteId: idReporte,
+        estatus: reporte.estatus,
+        estatusAnterior: estatusAnterior,
+        autorizadoPor: reporte.nombreAutorizador,
+        numeroCasa: reporte.numeroCasa,
+        timestamp: new Date()
+      });
+    }
+
+    res.json({ 
+      success: true, 
+      message: 'Reporte actualizado correctamente',
+      estatus: reporte.estatus,
+      autorizado: true
+    });
+
+  } catch (error) {
+    console.error("❌ Error actualizando reporte:", error);
+    res.status(500).json({ error: 'Error al actualizar el reporte' });
+  }
+});
+module.exports = router;
 
 router.get('/reportes/pendiente/:fraccId/:numeroCasa', obtenerPendientePorCasa);
 
