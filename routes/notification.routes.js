@@ -3,7 +3,7 @@ const router = express.Router();
 const fetch = require("node-fetch");
 const Fraccionamiento = require("../models/fraccionamiento");
 const Notificacion = require("../models/Notification");
-const PlayerRegistry = require("../models/PlayerRegistry");
+const PlayerRegistry = require("../models/playerRegistry");
 const ONESIGNAL_APP_ID = process.env.ONESIGNAL_APP_ID;
 const ONESIGNAL_API_KEY = process.env.ONESIGNAL_API_KEY;
 
