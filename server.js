@@ -104,7 +104,7 @@ mongoose
 global.latestNotification = null;
 
 app.use("/api/auth", authRoutes);
-app.use("/api/fracc", fraccRoutes);
+app.use("/api/fraccionamientos", fraccRoutes);
 app.use("/api/residencias", residenciasRoutes);
 app.use("/api/reportes", reportesRoutes);
 app.use("/api/player", playerRoutes);
