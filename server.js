@@ -114,7 +114,7 @@ const PORT = process.env.PORT || 5002;
 
 // 🚀 Iniciar servidor
 server.listen(PORT, "0.0.0.0", () => {
-  console.log(`🚀 Servidor corriendo en puerto ${PORT}`);
-  console.log(`🔌 WebSocket habilitado`);
-  console.log(`🌐 CORS configurado para Flutter y Admin`);
+  console.log(`Servidor corriendo en puerto ${PORT}`);
+  console.log(`WebSocket habilitado`);
+  console.log(`CORS configurado para Flutter y Admin`);
 });

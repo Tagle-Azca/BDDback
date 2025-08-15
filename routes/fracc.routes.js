@@ -36,7 +36,15 @@ const manejarError = (res, error, mensaje = "Error interno del servidor", status
 };
 
 const buscarFraccionamiento = async (fraccId) => {
-  return await Fraccionamiento.findById(fraccId);
+  console.log(`🔎 buscarFraccionamiento llamado con: "${fraccId}"`);
+  try {
+    const resultado = await Fraccionamiento.findById(fraccId);
+    console.log(`📊 Resultado de búsqueda:`, resultado ? `Encontrado: ${resultado.nombre}` : 'No encontrado');
+    return resultado;
+  } catch (error) {
+    console.error(`💥 Error en buscarFraccionamiento:`, error);
+    throw error;
+  }
 };
 
 const buscarCasa = (fraccionamiento, numero) => {
@@ -65,13 +73,21 @@ const generarQRLinks = (fraccionamientoId, numeroCasa = null) => {
 // Middleware para validar fraccionamiento
 const validarFraccionamiento = async (req, res, next) => {
   try {
+    console.log(`🔍 Buscando fraccionamiento con ID: "${req.params.fraccId}"`);
+    console.log(`🔢 Tipo de ID: ${typeof req.params.fraccId}, Longitud: ${req.params.fraccId?.length}`);
+    
     const fracc = await buscarFraccionamiento(req.params.fraccId);
+    
     if (!fracc) {
+      console.log(`❌ Fraccionamiento no encontrado para ID: "${req.params.fraccId}"`);
       return res.status(404).json({ error: "Fraccionamiento no encontrado" });
     }
+    
+    console.log(`✅ Fraccionamiento encontrado: ${fracc.nombre} (ID: ${fracc._id})`);
     req.fraccionamiento = fracc;
     next();
   } catch (error) {
+    console.error(`💥 Error en validarFraccionamiento:`, error);
     manejarError(res, error);
   }
 };
@@ -323,7 +339,11 @@ const manejarPorton = async (req, res, accion) => {
 };
 
 // Abrir puerta
-router.post('/:fraccId/abrir-puerta', validarFraccionamiento, (req, res) => manejarPorton(req, res, 'abrir'));
+router.post('/:fraccId/abrir-puerta', (req, res, next) => {
+  console.log(`🚪 Petición de abrir puerta recibida para ID: "${req.params.fraccId}"`);
+  console.log(`👤 Usuario: ${req.body.userId}`);
+  next();
+}, validarFraccionamiento, (req, res) => manejarPorton(req, res, 'abrir'));
 
 // Rechazar apertura de puerta
 router.post('/:fraccId/rechazar-puerta', validarFraccionamiento, (req, res) => manejarPorton(req, res, 'rechazar'));
