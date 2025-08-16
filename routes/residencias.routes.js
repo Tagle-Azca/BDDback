@@ -75,7 +75,6 @@ router.put("/update-residentes/:id", async (req, res) => {
       .filter((r) => !r._id)
       .map((r) => ({
         nombre: r.nombre,
-        edad: r.edad,
         telefono: r.telefono,
       }));
 

@@ -20,7 +20,6 @@ const registerHouse = async (fraccionamiento, casaDatos) => {
 
     const nuevosResidentes = casaDatos.residentes.map((residente) => ({
       nombre: residente.nombre,
-      edad: residente.edad || null,
       residenteId: uuidv4(),
     }));
 

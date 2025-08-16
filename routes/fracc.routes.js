@@ -277,8 +277,8 @@ router.put("/:fraccId/casas/:numero/toggle", validarFraccionamiento, validarCasa
 // Agregar residente a una casa
 router.post("/:fraccId/casas/:numero/residentes", validarFraccionamiento, validarCasa, async (req, res) => {
   try {
-    const { nombre, edad, relacion } = req.body;
-    req.casa.residentes.push({ nombre, edad, relacion, qrPersonal: uuidv4() });
+    const { nombre, relacion } = req.body;
+    req.casa.residentes.push({ nombre, relacion, qrPersonal: uuidv4() });
     await req.fraccionamiento.save();
     res.status(201).json(req.fraccionamiento);
   } catch (error) {
