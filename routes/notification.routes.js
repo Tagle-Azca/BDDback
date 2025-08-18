@@ -72,17 +72,43 @@ router.post("/send-notification", async (req, res) => {
       });
     }
 
+    // ✅ LÓGICA CORREGIDA PARA EXTRAER UUIDs VÁLIDOS
     const playerIds = [...new Set(playersEnCasa
-      .map(player => player.originalPlayerId || player.playerId)
-      .filter(id => id && id.length > 10))];
+      .map(player => {
+        // Si originalPlayerId existe y es válido, úsalo
+        if (player.originalPlayerId && player.originalPlayerId.length === 36) {
+          console.log(`✅ Usando originalPlayerId: ${player.originalPlayerId}`);
+          return player.originalPlayerId;
+        }
+        
+        // Si no, extraer UUID del playerId con timestamp
+        if (player.playerId && player.playerId.includes('_')) {
+          const uuidPart = player.playerId.split('_')[0];
+          // Validar que es un UUID válido (36 caracteres con guiones)
+          if (uuidPart.length === 36 && uuidPart.includes('-')) {
+            console.log(`🔧 Extrayendo UUID: ${uuidPart} de ${player.playerId}`);
+            return uuidPart;
+          }
+        }
+        
+        console.log(`⚠️ No se pudo extraer UUID válido de: ${player.playerId}`);
+        return null;
+      })
+      .filter(id => id && id.length === 36))];
 
     console.log(`📱 Enviando a ${playerIds.length} dispositivos únicos en casa ${residencia}`);
-    console.log(`📱 Player IDs:`, playerIds);
+    console.log(`📱 Player IDs (UUIDs limpios):`, playerIds);
 
     if (playerIds.length === 0) {
       return res.status(400).json({ 
         error: "No hay Player IDs válidos para esta casa",
-        playersEncontrados: playersEnCasa.length
+        debug: {
+          playersEncontrados: playersEnCasa.length,
+          playersData: playersEnCasa.map(p => ({
+            playerId: p.playerId,
+            originalPlayerId: p.originalPlayerId
+          }))
+        }
       });
     }
 
@@ -95,7 +121,7 @@ router.post("/send-notification", async (req, res) => {
       data: { fraccId, residencia, foto, nombre: title, motivo: body, tipo: 'solicitud_acceso' }
     };
 
-    console.log("📤 PAYLOAD ENVIADO A ONESIGNAL:", JSON.stringify(payload, null, 2));
+    console.log("📤 PAYLOAD CON UUIDs LIMPIOS:", JSON.stringify(payload, null, 2));
 
     const response = await fetch("https://onesignal.com/api/v1/notifications", {
       method: "POST",
@@ -287,6 +313,7 @@ router.get("/verify/:fraccId/:residencia", async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+
 router.get("/devices/:fraccId/:residencia", async (req, res) => {
   try {
     const { fraccId, residencia } = req.params;
