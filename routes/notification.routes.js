@@ -10,22 +10,89 @@ router.post("/send-notification", async (req, res) => {
   try {
     const { title, body, fraccId, residencia, foto } = req.body;
     console.log("🔔 Enviando notificación a casa", residencia);
+    console.log("🔍 DATOS RECIBIDOS:");
+    console.log("  - fraccId:", fraccId, "(tipo:", typeof fraccId, ")");
+    console.log("  - residencia:", residencia, "(tipo:", typeof residencia, ")");
 
+    // NUEVO: Debug completo de la búsqueda
+    console.log("🔍 BUSCANDO DISPOSITIVOS CON:");
+    console.log("  - fraccId:", fraccId);
+    console.log("  - residencia:", residencia.toString());
+
+    // Buscar TODOS los registros primero para debug
+    const todosLosPlayers = await PlayerRegistry.find({});
+    console.log("📊 TODOS LOS PLAYERS EN DB:", todosLosPlayers.length);
+    todosLosPlayers.forEach((player, index) => {
+      console.log(`  ${index + 1}. fraccId: "${player.fraccId}" | residencia: "${player.residencia}" | playerId: "${player.originalPlayerId || player.playerId}"`);
+    });
+
+    // Buscar por fraccId solamente
+    const playersPorFracc = await PlayerRegistry.find({ fraccId: fraccId });
+    console.log("📱 PLAYERS POR FRACCIONAMIENTO:", playersPorFracc.length);
+    
+    // Buscar por residencia solamente  
+    const playersPorResidencia = await PlayerRegistry.find({ residencia: residencia.toString() });
+    console.log("🏠 PLAYERS POR RESIDENCIA:", playersPorResidencia.length);
+
+    // Búsqueda original
     const playersEnCasa = await PlayerRegistry.find({ 
       fraccId: fraccId, 
       residencia: residencia.toString() 
     });
+    console.log("🎯 PLAYERS ENCONTRADOS CON AMBOS CRITERIOS:", playersEnCasa.length);
 
     if (playersEnCasa.length === 0) {
-      return res.status(400).json({ error: "No hay dispositivos registrados en esta casa" });
+      console.log("❌ NO HAY DISPOSITIVOS - Intentando búsquedas alternativas...");
+      
+      // ALTERNATIVA 1: Buscar sin toString()
+      const alt1 = await PlayerRegistry.find({ 
+        fraccId: fraccId, 
+        residencia: residencia 
+      });
+      console.log("🔄 ALT1 (sin toString):", alt1.length);
+      
+      // ALTERNATIVA 2: Convertir fraccId a string también
+      const alt2 = await PlayerRegistry.find({ 
+        fraccId: fraccId.toString(), 
+        residencia: residencia.toString() 
+      });
+      console.log("🔄 ALT2 (ambos toString):", alt2.length);
+      
+      // ALTERNATIVA 3: Usar ObjectId si es necesario
+      const mongoose = require('mongoose');
+      if (mongoose.Types.ObjectId.isValid(fraccId)) {
+        const alt3 = await PlayerRegistry.find({ 
+          fraccId: new mongoose.Types.ObjectId(fraccId), 
+          residencia: residencia.toString() 
+        });
+        console.log("🔄 ALT3 (ObjectId):", alt3.length);
+      }
+      
+      return res.status(400).json({ 
+        error: "No hay dispositivos registrados en esta casa",
+        debug: {
+          fraccId_recibido: fraccId,
+          residencia_recibida: residencia,
+          total_players_db: todosLosPlayers.length,
+          players_por_fracc: playersPorFracc.length,
+          players_por_residencia: playersPorResidencia.length
+        }
+      });
     }
 
     const playerIds = [...new Set(playersEnCasa
-      .map(player => player.originalPlayerId)
+      .map(player => player.originalPlayerId || player.playerId)
       .filter(id => id && id.length > 10))];
 
     console.log(`📱 Enviando a ${playerIds.length} dispositivos únicos en casa ${residencia}`);
     console.log(`📱 Player IDs:`, playerIds);
+
+    if (playerIds.length === 0) {
+      return res.status(400).json({ 
+        error: "No hay Player IDs válidos para esta casa",
+        playersEncontrados: playersEnCasa.length
+      });
+    }
 
     const payload = {
       app_id: process.env.ONESIGNAL_APP_ID,
@@ -35,6 +102,8 @@ router.post("/send-notification", async (req, res) => {
       big_picture: foto,
       data: { fraccId, residencia, foto, nombre: title, motivo: body, tipo: 'solicitud_acceso' }
     };
+
+    console.log("📤 PAYLOAD ENVIADO A ONESIGNAL:", JSON.stringify(payload, null, 2));
 
     const response = await fetch("https://onesignal.com/api/v1/notifications", {
       method: "POST",
@@ -62,6 +131,102 @@ router.post("/send-notification", async (req, res) => {
     res.status(500).json({ error: "Error al enviar notificación" });
   }
 });
+
+// NUEVO: Endpoint de debug para verificar registros
+router.get("/debug/:fraccId/:residencia", async (req, res) => {
+  try {
+    const { fraccId, residencia } = req.params;
+    
+    console.log("🔍 DEBUG ENDPOINT - Parámetros recibidos:");
+    console.log("  - fraccId:", fraccId, "(tipo:", typeof fraccId, ")");
+    console.log("  - residencia:", residencia, "(tipo:", typeof residencia, ")");
+    
+    // Todos los registros
+    const todos = await PlayerRegistry.find({});
+    
+    // Por fraccionamiento
+    const porFracc = await PlayerRegistry.find({ fraccId });
+    
+    // Por residencia
+    const porRes = await PlayerRegistry.find({ residencia });
+    
+    // Combinado
+    const combinado = await PlayerRegistry.find({ fraccId, residencia });
+    
+    res.json({
+      parametros: { fraccId, residencia },
+      conteos: {
+        total_registros: todos.length,
+        por_fraccionamiento: porFracc.length,
+        por_residencia: porRes.length,
+        combinado: combinado.length
+      },
+      todos_los_registros: todos.map(p => ({
+        fraccId: p.fraccId,
+        residencia: p.residencia,
+        playerId: p.playerId,
+        originalPlayerId: p.originalPlayerId,
+        createdAt: p.createdAt
+      })),
+      encontrados_combinado: combinado.map(p => ({
+        fraccId: p.fraccId,
+        residencia: p.residencia,
+        playerId: p.playerId,
+        originalPlayerId: p.originalPlayerId
+      }))
+    });
+    
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// También agregar logs en el endpoint de registro para comparar
+router.post("/register", async (req, res) => {
+  try {
+    const { playerId, fraccId, residencia } = req.body;
+    console.log(`📱 REGISTRO - Datos recibidos:`);
+    console.log(`  - playerId: ${playerId}`);
+    console.log(`  - fraccId: ${fraccId} (tipo: ${typeof fraccId})`);
+    console.log(`  - residencia: ${residencia} (tipo: ${typeof residencia})`);
+    
+    const uniqueId = `${playerId}_${residencia}_${Date.now()}`;
+    console.log(`🔧 ID único generado: ${uniqueId}`);
+    
+    const existing = await PlayerRegistry.findOne({ 
+      originalPlayerId: playerId,
+      fraccId, 
+      residencia 
+    });
+    
+    if (!existing) {
+      const newPlayer = await PlayerRegistry.create({
+        playerId: uniqueId,
+        originalPlayerId: playerId, 
+        fraccId,
+        residencia,
+        createdAt: new Date()
+      });
+      console.log(`✅ Dispositivo registrado:`, {
+        playerId: newPlayer.playerId,
+        originalPlayerId: newPlayer.originalPlayerId,
+        fraccId: newPlayer.fraccId,
+        residencia: newPlayer.residencia
+      });
+    } else {
+      existing.createdAt = new Date();
+      await existing.save();
+      console.log(`🔄 Dispositivo actualizado: ${existing.playerId}`);
+    }
+    
+    res.json({ success: true, message: "Dispositivo registrado exitosamente" });
+  } catch (error) {
+    console.error("❌ Error registrando:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+module.exports = router;
 
 router.post("/register", async (req, res) => {
   try {
