@@ -14,27 +14,22 @@ router.post("/send-notification", async (req, res) => {
     console.log("  - fraccId:", fraccId, "(tipo:", typeof fraccId, ")");
     console.log("  - residencia:", residencia, "(tipo:", typeof residencia, ")");
 
-    // NUEVO: Debug completo de la búsqueda
     console.log("🔍 BUSCANDO DISPOSITIVOS CON:");
     console.log("  - fraccId:", fraccId);
     console.log("  - residencia:", residencia.toString());
 
-    // Buscar TODOS los registros primero para debug
     const todosLosPlayers = await PlayerRegistry.find({});
     console.log("📊 TODOS LOS PLAYERS EN DB:", todosLosPlayers.length);
     todosLosPlayers.forEach((player, index) => {
       console.log(`  ${index + 1}. fraccId: "${player.fraccId}" | residencia: "${player.residencia}" | playerId: "${player.originalPlayerId || player.playerId}"`);
     });
 
-    // Buscar por fraccId solamente
     const playersPorFracc = await PlayerRegistry.find({ fraccId: fraccId });
     console.log("📱 PLAYERS POR FRACCIONAMIENTO:", playersPorFracc.length);
     
-    // Buscar por residencia solamente  
     const playersPorResidencia = await PlayerRegistry.find({ residencia: residencia.toString() });
     console.log("🏠 PLAYERS POR RESIDENCIA:", playersPorResidencia.length);
 
-    // Búsqueda original
     const playersEnCasa = await PlayerRegistry.find({ 
       fraccId: fraccId, 
       residencia: residencia.toString() 
@@ -44,21 +39,18 @@ router.post("/send-notification", async (req, res) => {
     if (playersEnCasa.length === 0) {
       console.log("❌ NO HAY DISPOSITIVOS - Intentando búsquedas alternativas...");
       
-      // ALTERNATIVA 1: Buscar sin toString()
       const alt1 = await PlayerRegistry.find({ 
         fraccId: fraccId, 
         residencia: residencia 
       });
       console.log("🔄 ALT1 (sin toString):", alt1.length);
       
-      // ALTERNATIVA 2: Convertir fraccId a string también
       const alt2 = await PlayerRegistry.find({ 
         fraccId: fraccId.toString(), 
         residencia: residencia.toString() 
       });
       console.log("🔄 ALT2 (ambos toString):", alt2.length);
       
-      // ALTERNATIVA 3: Usar ObjectId si es necesario
       const mongoose = require('mongoose');
       if (mongoose.Types.ObjectId.isValid(fraccId)) {
         const alt3 = await PlayerRegistry.find({ 
@@ -132,7 +124,6 @@ router.post("/send-notification", async (req, res) => {
   }
 });
 
-// NUEVO: Endpoint de debug para verificar registros
 router.get("/debug/:fraccId/:residencia", async (req, res) => {
   try {
     const { fraccId, residencia } = req.params;
@@ -141,16 +132,12 @@ router.get("/debug/:fraccId/:residencia", async (req, res) => {
     console.log("  - fraccId:", fraccId, "(tipo:", typeof fraccId, ")");
     console.log("  - residencia:", residencia, "(tipo:", typeof residencia, ")");
     
-    // Todos los registros
     const todos = await PlayerRegistry.find({});
     
-    // Por fraccionamiento
     const porFracc = await PlayerRegistry.find({ fraccId });
     
-    // Por residencia
     const porRes = await PlayerRegistry.find({ residencia });
     
-    // Combinado
     const combinado = await PlayerRegistry.find({ fraccId, residencia });
     
     res.json({
@@ -181,7 +168,6 @@ router.get("/debug/:fraccId/:residencia", async (req, res) => {
   }
 });
 
-// También agregar logs en el endpoint de registro para comparar
 router.post("/register", async (req, res) => {
   try {
     const { playerId, fraccId, residencia } = req.body;
@@ -190,80 +176,117 @@ router.post("/register", async (req, res) => {
     console.log(`  - fraccId: ${fraccId} (tipo: ${typeof fraccId})`);
     console.log(`  - residencia: ${residencia} (tipo: ${typeof residencia})`);
     
+    if (!playerId || playerId.trim() === '') {
+      console.log("❌ Player ID vacío o inválido");
+      return res.status(400).json({ error: "Player ID es requerido" });
+    }
+    
     const uniqueId = `${playerId}_${residencia}_${Date.now()}`;
     console.log(`🔧 ID único generado: ${uniqueId}`);
     
     const existing = await PlayerRegistry.findOne({ 
-      originalPlayerId: playerId,
+      originalPlayerId: playerId, 
       fraccId, 
       residencia 
     });
     
     if (!existing) {
       const newPlayer = await PlayerRegistry.create({
-        playerId: uniqueId,
-        originalPlayerId: playerId, 
-        fraccId,
-        residencia,
+        playerId: uniqueId,                    
+        originalPlayerId: playerId,           
+        fraccId: fraccId,
+        residencia: residencia.toString(),   
         createdAt: new Date()
       });
+      
       console.log(`✅ Dispositivo registrado:`, {
         playerId: newPlayer.playerId,
-        originalPlayerId: newPlayer.originalPlayerId,
+        originalPlayerId: newPlayer.originalPlayerId,  
         fraccId: newPlayer.fraccId,
         residencia: newPlayer.residencia
       });
+      
+      const verificacion = await PlayerRegistry.findById(newPlayer._id);
+      console.log(`🔍 VERIFICACIÓN POST-CREACIÓN:`, {
+        originalPlayerId: verificacion.originalPlayerId,
+        saved: verificacion.originalPlayerId !== undefined
+      });
+      
     } else {
+      existing.playerId = uniqueId;  
       existing.createdAt = new Date();
       await existing.save();
-      console.log(`🔄 Dispositivo actualizado: ${existing.playerId}`);
+      
+      console.log(`🔄 Dispositivo actualizado:`, {
+        playerId: existing.playerId,
+        originalPlayerId: existing.originalPlayerId,
+        fraccId: existing.fraccId,
+        residencia: existing.residencia
+      });
     }
     
-    res.json({ success: true, message: "Dispositivo registrado exitosamente" });
-  } catch (error) {
-    console.error("❌ Error registrando:", error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-module.exports = router;
-
-router.post("/register", async (req, res) => {
-  try {
-    const { playerId, fraccId, residencia } = req.body;
-    console.log(`📱 Registrando dispositivo: ${playerId} para casa ${residencia}`);
-    
-    const uniqueId = `${playerId}_${residencia}_${Date.now()}`;
-    console.log(`🔧 ID único generado: ${uniqueId}`);
-    
-    const existing = await PlayerRegistry.findOne({ 
-      originalPlayerId: playerId,
+    const totalEnCasa = await PlayerRegistry.countDocuments({ 
       fraccId, 
-      residencia 
+      residencia: residencia.toString() 
     });
     
-    if (!existing) {
-      await PlayerRegistry.create({
-        playerId: uniqueId,
-        originalPlayerId: playerId, 
-        fraccId,
-        residencia,
-        createdAt: new Date()
-      });
-      console.log(`✅ Dispositivo registrado: ${uniqueId}`);
-    } else {
-      existing.createdAt = new Date();
-      await existing.save();
-      console.log(`🔄 Dispositivo actualizado: ${existing.playerId}`);
-    }
+    const conPlayerIdValido = await PlayerRegistry.countDocuments({ 
+      fraccId, 
+      residencia: residencia.toString(),
+      originalPlayerId: { $exists: true, $ne: null, $ne: '' }
+    });
     
-    res.json({ success: true, message: "Dispositivo registrado exitosamente" });
+    console.log(`📊 RESUMEN CASA ${residencia}:`);
+    console.log(`  - Total registros: ${totalEnCasa}`);
+    console.log(`  - Con Player ID válido: ${conPlayerIdValido}`);
+    
+    res.json({ 
+      success: true, 
+      message: "Dispositivo registrado exitosamente",
+      debug: {
+        totalEnCasa,
+        conPlayerIdValido,
+        playerIdRecibido: playerId
+      }
+    });
+    
   } catch (error) {
     console.error("❌ Error registrando:", error);
     res.status(500).json({ error: error.message });
   }
 });
 
+router.get("/verify/:fraccId/:residencia", async (req, res) => {
+  try {
+    const { fraccId, residencia } = req.params;
+    
+    const registros = await PlayerRegistry.find({ 
+      fraccId, 
+      residencia: residencia.toString() 
+    });
+    
+    console.log(`🔍 VERIFICACIÓN CASA ${residencia}:`);
+    registros.forEach((reg, index) => {
+      console.log(`  ${index + 1}. originalPlayerId: "${reg.originalPlayerId}" | playerId: "${reg.playerId}"`);
+    });
+    
+    const validos = registros.filter(r => r.originalPlayerId && r.originalPlayerId.length > 10);
+    
+    res.json({
+      total: registros.length,
+      validos: validos.length,
+      registros: registros.map(r => ({
+        originalPlayerId: r.originalPlayerId,
+        playerId: r.playerId,
+        createdAt: r.createdAt,
+        valido: r.originalPlayerId && r.originalPlayerId.length > 10
+      }))
+    });
+    
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
 router.get("/devices/:fraccId/:residencia", async (req, res) => {
   try {
     const { fraccId, residencia } = req.params;
