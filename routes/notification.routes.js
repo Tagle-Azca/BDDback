@@ -6,13 +6,11 @@ const PlayerRegistry = require("../models/playerRegistry");
 const ONESIGNAL_APP_ID = process.env.ONESIGNAL_APP_ID;
 const ONESIGNAL_API_KEY = process.env.ONESIGNAL_API_KEY;
 
-// ✅ NOTIFICACIÓN SIMPLE - SOLO PLAYERREGISTRY
 router.post("/send-notification", async (req, res) => {
   try {
     const { title, body, fraccId, residencia, foto } = req.body;
     console.log("🔔 Enviando notificación a casa", residencia);
 
-    // SOLO usar PlayerRegistry
     const playersEnCasa = await PlayerRegistry.find({ 
       fraccId: fraccId, 
       residencia: residencia.toString() 
@@ -22,9 +20,8 @@ router.post("/send-notification", async (req, res) => {
       return res.status(400).json({ error: "No hay dispositivos registrados en esta casa" });
     }
 
-    // Obtener TODOS los Player IDs originales únicos
     const playerIds = [...new Set(playersEnCasa
-      .map(player => player.originalPlayerId || player.playerId)
+      .map(player => player.originalPlayerId)
       .filter(id => id && id.length > 10))];
 
     console.log(`📱 Enviando a ${playerIds.length} dispositivos únicos en casa ${residencia}`);
@@ -66,17 +63,14 @@ router.post("/send-notification", async (req, res) => {
   }
 });
 
-// ✅ REGISTRO SIMPLE
 router.post("/register", async (req, res) => {
   try {
     const { playerId, fraccId, residencia } = req.body;
     console.log(`📱 Registrando dispositivo: ${playerId} para casa ${residencia}`);
     
-    // ID único por dispositivo + casa + timestamp
     const uniqueId = `${playerId}_${residencia}_${Date.now()}`;
     console.log(`🔧 ID único generado: ${uniqueId}`);
     
-    // Verificar si ya existe
     const existing = await PlayerRegistry.findOne({ 
       originalPlayerId: playerId,
       fraccId, 
@@ -93,7 +87,6 @@ router.post("/register", async (req, res) => {
       });
       console.log(`✅ Dispositivo registrado: ${uniqueId}`);
     } else {
-      // Actualizar timestamp del existente
       existing.createdAt = new Date();
       await existing.save();
       console.log(`🔄 Dispositivo actualizado: ${existing.playerId}`);
@@ -106,7 +99,6 @@ router.post("/register", async (req, res) => {
   }
 });
 
-// ✅ VER DISPOSITIVOS REGISTRADOS
 router.get("/devices/:fraccId/:residencia", async (req, res) => {
   try {
     const { fraccId, residencia } = req.params;
@@ -140,7 +132,6 @@ router.get("/devices/:fraccId/:residencia", async (req, res) => {
   }
 });
 
-// ✅ LIMPIAR REGISTROS DE UNA CASA
 router.delete("/clear/:fraccId/:residencia", async (req, res) => {
   try {
     const { fraccId, residencia } = req.params;
@@ -163,7 +154,6 @@ router.delete("/clear/:fraccId/:residencia", async (req, res) => {
   }
 });
 
-// ✅ ESTADÍSTICAS
 router.get("/stats/:fraccId/:residencia", async (req, res) => {
   try {
     const { fraccId, residencia } = req.params;
@@ -181,7 +171,6 @@ router.get("/stats/:fraccId/:residencia", async (req, res) => {
   }
 });
 
-// ✅ HISTORIAL DE NOTIFICACIONES
 router.get("/:fraccId/:residencia", async (req, res) => {
   try {
     const { fraccId, residencia } = req.params;
@@ -193,7 +182,6 @@ router.get("/:fraccId/:residencia", async (req, res) => {
   }
 });
 
-// ✅ RESPONDER NOTIFICACIÓN
 router.post("/responder", async (req, res) => {
   const { id, respuesta } = req.body;
 
@@ -217,12 +205,10 @@ router.post("/responder", async (req, res) => {
   }
 });
 
-// ✅ LIMPIEZA AUTOMÁTICA
 setInterval(async () => {
   const hace30Dias = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
   
   try {
-    // Limpiar notificaciones antiguas
     const notificacionesActualizadas = await Notificacion.updateMany(
       { resultado: "PENDIENTE", fecha: { $lte: new Date(Date.now() - 10 * 60 * 1000) } },
       { resultado: "IGNORADO" }
@@ -232,7 +218,6 @@ setInterval(async () => {
       console.log(`🕒 ${notificacionesActualizadas.modifiedCount} notificaciones marcadas como IGNORADO`);
     }
 
-    // Limpiar registros muy antiguos
     const playersLimpiados = await PlayerRegistry.deleteMany({
       createdAt: { $lte: hace30Dias }
     });
