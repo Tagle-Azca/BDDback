@@ -33,11 +33,11 @@ io.on('connection', (socket) => {
   socket.on('joinHouse', ({ numeroCasa, fraccId, userId }) => {
     const room = `casa_${numeroCasa}_${fraccId}`;
     socket.join(room);
-    console.log(`🏠 Usuario ${userId || socket.id} se unió a ${room}`);
+    console.log(`Usuario ${userId || socket.id} se unió a ${room}`);
   });
 
   socket.on('disconnect', () => {
-    console.log(`📱 Usuario desconectado: ${socket.id}`);
+    console.log(`Usuario desconectado: ${socket.id}`);
   });
 });
 
