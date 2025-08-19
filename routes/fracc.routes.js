@@ -10,7 +10,6 @@ const bcrypt = require("bcrypt");
 const cloudinary = require("../config/cloudinary");
 
 const router = express.Router();
-const JWT_SECRET = process.env.JWT_SECRET;
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, "uploads/"),
@@ -34,13 +33,9 @@ const manejarError = (res, error, mensaje = "Error interno del servidor", status
 };
 
 const buscarFraccionamiento = async (fraccId) => {
-  console.log(`buscarFraccionamiento llamado con: "${fraccId}"`);
   try {
-    const resultado = await Fraccionamiento.findById(fraccId);
-    console.log(`Resultado de búsqueda:`, resultado ? `Encontrado: ${resultado.nombre}` : 'No encontrado');
-    return resultado;
+    return await Fraccionamiento.findById(fraccId);
   } catch (error) {
-    console.error(`Error en buscarFraccionamiento:`, error);
     throw error;
   }
 };
@@ -62,21 +57,15 @@ const generarQRLinks = (fraccionamientoId, numeroCasa = null) => {
 
 const validarFraccionamiento = async (req, res, next) => {
   try {
-    console.log(`Buscando fraccionamiento con ID: "${req.params.fraccId}"`);
-    console.log(`Tipo de ID: ${typeof req.params.fraccId}, Longitud: ${req.params.fraccId?.length}`);
-
     const fracc = await buscarFraccionamiento(req.params.fraccId);
     
     if (!fracc) {
-      console.log(`Fraccionamiento no encontrado para ID: "${req.params.fraccId}"`);
       return res.status(404).json({ error: "Fraccionamiento no encontrado" });
     }
     
-    console.log(`Fraccionamiento encontrado: ${fracc.nombre} (ID: ${fracc._id})`);
     req.fraccionamiento = fracc;
     next();
   } catch (error) {
-    console.error(`Error en validarFraccionamiento:`, error);
     manejarError(res, error);
   }
 };
@@ -281,50 +270,13 @@ router.post("/residencias/:fraccId/:numero/login", validarFraccionamiento, valid
   }
 });
 
-const manejarPorton = async (req, res, accion) => {
-  const { userId } = req.body;
-  
-  try {
-    if (accion === 'abrir') {
-      await Fraccionamiento.updateOne({ _id: req.params.fraccId }, { $set: { puerta: true } });
-      console.log(`Usuario ${userId} abrió el portón del fraccionamiento ${req.params.fraccId}`);
-      
-      setTimeout(async () => {
-        await Fraccionamiento.updateOne({ _id: req.params.fraccId }, { $set: { puerta: false } });
-        console.log(`Portón del fraccionamiento ${req.params.fraccId} cerrado automáticamente`);
-      }, 10000);
-      
-      res.status(200).json({ message: "Portón abierto correctamente" });
-    } else {
-      console.log(`Usuario ${userId} rechazó la apertura del portón del fraccionamiento ${req.params.fraccId}`);
-      res.status(200).json({ message: "Rechazo de apertura registrado correctamente" });
-    }
-  } catch (error) {
-    manejarError(res, error, `Error al ${accion} puerta`);
-  }
-};
-
-router.post('/:fraccId/abrir-puerta', (req, res, next) => {
-  console.log(`🚪 Petición de abrir puerta recibida para ID: "${req.params.fraccId}"`);
-  console.log(`👤 Usuario: ${req.body.userId}`);
-  next();
-}, validarFraccionamiento, (req, res) => manejarPorton(req, res, 'abrir'));
-
-router.post('/:fraccId/rechazar-puerta', validarFraccionamiento, (req, res) => manejarPorton(req, res, 'rechazar'));
-
-router.get('/:fraccId/estado-puerta', validarFraccionamiento, (req, res) => {
-  res.status(200).json({ puertaAbierta: req.fraccionamiento.puerta });
-});
-
 const enviarNotificacion = async (nombre, motivo, fraccId, residencia, foto) => {
   if (!process.env.ONESIGNAL_API_KEY) {
-    console.error("ONESIGNAL_API_KEY no definida");
     return;
   }
 
   try {
-    console.log("Enviando notificación a OneSignal...");
-    const response = await fetch("https://ingresosbackend.onrender.com/api/notifications/send-notification", {
+    await fetch("https://ingresosbackend.onrender.com/api/notifications/send-notification", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -337,67 +289,10 @@ const enviarNotificacion = async (nombre, motivo, fraccId, residencia, foto) => 
         motivo,
       }),
     });
-    
-    console.log("Resultado de notificación:", response.status);
-    const data = await response.json();
-    console.log("Detalles:", data);
   } catch (err) {
     console.error("Error al enviar la notificación:", err);
   }
 };
-
-router.post("/:fraccId/casas/:numero/visitas", 
-  validarFraccionamiento, 
-  validarCasa, 
-  upload.single("FotoVisita"), 
-  async (req, res) => {
-    try {
-      console.log("Llegó a la ruta de visitas");
-      console.log("Body:", req.body);
-      console.log("File:", req.file);
-
-      const { nombre: nombreVisitante, motivo } = req.body;
-
-      if (!req.casa.activa) {
-        return res.status(403).json({ error: "La casa está desactivada y no puede recibir visitas." });
-      }
-
-      const fotoUrl = await subirImagenCloudinary(req.file?.path);
-
-      await Reporte.create({
-        fraccId: req.params.fraccId,
-        numeroCasa: req.params.numero,
-        nombre: nombreVisitante,
-        motivo,
-        foto: fotoUrl,
-        tiempo: new Date(),
-        estatus: 'pendiente',
-      });
-
-      if (!req.casa.visitas) req.casa.visitas = [];
-      req.casa.visitas.push({
-        nombreVisitante,
-        motivo,
-        foto: fotoUrl,
-        fecha: new Date(),
-      });
-
-      await req.fraccionamiento.save();
-
-      await enviarNotificacion(
-        nombreVisitante,
-        motivo,
-        req.params.fraccId,
-        req.params.numero,
-        fotoUrl
-      );
-
-      res.status(201).json({ mensaje: "Visita registrada con éxito", foto: fotoUrl });
-    } catch (error) {
-      manejarError(res, error, "Error al registrar visita");
-    }
-  }
-);
 
 const subirImagenCloudinary = async (filePath) => {
   if (!filePath) {
@@ -413,7 +308,6 @@ const subirImagenCloudinary = async (filePath) => {
     
     return resultado.secure_url;
   } catch (error) {
-    console.error("Error al subir a Cloudinary:", error);
     throw new Error("Error al subir imagen a Cloudinary.");
   }
 };
@@ -424,10 +318,6 @@ router.post("/:fraccId/casas/:numero/visitas",
   upload.single("FotoVisita"), 
   async (req, res) => {
     try {
-      console.log("Llegó a la ruta de visitas");
-      console.log("Body:", req.body);
-      console.log("File:", req.file);
-
       const { nombre: nombreVisitante, motivo } = req.body;
 
       if (!req.casa.activa) {
@@ -457,8 +347,8 @@ router.post("/:fraccId/casas/:numero/visitas",
       await req.fraccionamiento.save();
 
       await enviarNotificacion(
-        "Nueva Visita",
-        `Visita registrada para la casa ${req.params.numero}: ${nombreVisitante} - ${motivo}`,
+        nombreVisitante,
+        motivo,
         req.params.fraccId,
         req.params.numero,
         fotoUrl

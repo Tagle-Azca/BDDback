@@ -9,106 +9,38 @@ const ONESIGNAL_API_KEY = process.env.ONESIGNAL_API_KEY;
 router.post("/send-notification", async (req, res) => {
   try {
     const { title, body, fraccId, residencia, foto } = req.body;
-    console.log("🔔 Enviando notificación a casa", residencia);
-    console.log("🔍 DATOS RECIBIDOS:");
-    console.log("  - fraccId:", fraccId, "(tipo:", typeof fraccId, ")");
-    console.log("  - residencia:", residencia, "(tipo:", typeof residencia, ")");
-
-    console.log("🔍 BUSCANDO DISPOSITIVOS CON:");
-    console.log("  - fraccId:", fraccId);
-    console.log("  - residencia:", residencia.toString());
-
-    const todosLosPlayers = await PlayerRegistry.find({});
-    console.log("📊 TODOS LOS PLAYERS EN DB:", todosLosPlayers.length);
-    todosLosPlayers.forEach((player, index) => {
-      console.log(`  ${index + 1}. fraccId: "${player.fraccId}" | residencia: "${player.residencia}" | playerId: "${player.originalPlayerId || player.playerId}"`);
-    });
-
-    const playersPorFracc = await PlayerRegistry.find({ fraccId: fraccId });
-    console.log("📱 PLAYERS POR FRACCIONAMIENTO:", playersPorFracc.length);
-    
-    const playersPorResidencia = await PlayerRegistry.find({ residencia: residencia.toString() });
-    console.log("🏠 PLAYERS POR RESIDENCIA:", playersPorResidencia.length);
 
     const playersEnCasa = await PlayerRegistry.find({ 
       fraccId: fraccId, 
       residencia: residencia.toString() 
     });
-    console.log("🎯 PLAYERS ENCONTRADOS CON AMBOS CRITERIOS:", playersEnCasa.length);
 
     if (playersEnCasa.length === 0) {
-      console.log("❌ NO HAY DISPOSITIVOS - Intentando búsquedas alternativas...");
-      
-      const alt1 = await PlayerRegistry.find({ 
-        fraccId: fraccId, 
-        residencia: residencia 
-      });
-      console.log("🔄 ALT1 (sin toString):", alt1.length);
-      
-      const alt2 = await PlayerRegistry.find({ 
-        fraccId: fraccId.toString(), 
-        residencia: residencia.toString() 
-      });
-      console.log("🔄 ALT2 (ambos toString):", alt2.length);
-      
-      const mongoose = require('mongoose');
-      if (mongoose.Types.ObjectId.isValid(fraccId)) {
-        const alt3 = await PlayerRegistry.find({ 
-          fraccId: new mongoose.Types.ObjectId(fraccId), 
-          residencia: residencia.toString() 
-        });
-        console.log("🔄 ALT3 (ObjectId):", alt3.length);
-      }
-      
       return res.status(400).json({ 
-        error: "No hay dispositivos registrados en esta casa",
-        debug: {
-          fraccId_recibido: fraccId,
-          residencia_recibida: residencia,
-          total_players_db: todosLosPlayers.length,
-          players_por_fracc: playersPorFracc.length,
-          players_por_residencia: playersPorResidencia.length
-        }
+        error: "No hay dispositivos registrados en esta casa"
       });
     }
 
-    // ✅ LÓGICA CORREGIDA PARA EXTRAER UUIDs VÁLIDOS
     const playerIds = [...new Set(playersEnCasa
       .map(player => {
-        // Si originalPlayerId existe y es válido, úsalo
         if (player.originalPlayerId && player.originalPlayerId.length === 36) {
-          console.log(`✅ Usando originalPlayerId: ${player.originalPlayerId}`);
           return player.originalPlayerId;
         }
         
-        // Si no, extraer UUID del playerId con timestamp
         if (player.playerId && player.playerId.includes('_')) {
           const uuidPart = player.playerId.split('_')[0];
-          // Validar que es un UUID válido (36 caracteres con guiones)
           if (uuidPart.length === 36 && uuidPart.includes('-')) {
-            console.log(`🔧 Extrayendo UUID: ${uuidPart} de ${player.playerId}`);
             return uuidPart;
           }
         }
         
-        console.log(`⚠️ No se pudo extraer UUID válido de: ${player.playerId}`);
         return null;
       })
       .filter(id => id && id.length === 36))];
 
-    console.log(`📱 Enviando a ${playerIds.length} dispositivos únicos en casa ${residencia}`);
-    console.log(`📱 Player IDs (UUIDs limpios):`, playerIds);
-
     if (playerIds.length === 0) {
       return res.status(400).json({ 
-        error: "No hay Player IDs válidos para esta casa",
-        debug: {
-          playersEncontrados: playersEnCasa.length,
-          playersData: playersEnCasa.map(p => ({
-            playerId: p.playerId,
-            originalPlayerId: p.originalPlayerId
-          }))
-        }
+        error: "No hay Player IDs válidos para esta casa"
       });
     }
 
@@ -121,8 +53,6 @@ router.post("/send-notification", async (req, res) => {
       data: { fraccId, residencia, foto, nombre: title, motivo: body, tipo: 'solicitud_acceso' }
     };
 
-    console.log("📤 PAYLOAD CON UUIDs LIMPIOS:", JSON.stringify(payload, null, 2));
-
     const response = await fetch("https://onesignal.com/api/v1/notifications", {
       method: "POST",
       headers: {
@@ -133,7 +63,6 @@ router.post("/send-notification", async (req, res) => {
     });
 
     const resultado = await response.json();
-    console.log("📬 Respuesta OneSignal:", resultado);
 
     await Notificacion.create({ title, body, fraccId, residencia, foto });
 
@@ -145,7 +74,7 @@ router.post("/send-notification", async (req, res) => {
     });
 
   } catch (error) {
-    console.error("❌ Error:", error);
+    console.error("Error enviando notificación:", error);
     res.status(500).json({ error: "Error al enviar notificación" });
   }
 });
@@ -154,16 +83,9 @@ router.get("/debug/:fraccId/:residencia", async (req, res) => {
   try {
     const { fraccId, residencia } = req.params;
     
-    console.log("🔍 DEBUG ENDPOINT - Parámetros recibidos:");
-    console.log("  - fraccId:", fraccId, "(tipo:", typeof fraccId, ")");
-    console.log("  - residencia:", residencia, "(tipo:", typeof residencia, ")");
-    
     const todos = await PlayerRegistry.find({});
-    
     const porFracc = await PlayerRegistry.find({ fraccId });
-    
     const porRes = await PlayerRegistry.find({ residencia });
-    
     const combinado = await PlayerRegistry.find({ fraccId, residencia });
     
     res.json({
@@ -197,18 +119,12 @@ router.get("/debug/:fraccId/:residencia", async (req, res) => {
 router.post("/register", async (req, res) => {
   try {
     const { playerId, fraccId, residencia } = req.body;
-    console.log(`📱 REGISTRO - Datos recibidos:`);
-    console.log(`  - playerId: ${playerId}`);
-    console.log(`  - fraccId: ${fraccId} (tipo: ${typeof fraccId})`);
-    console.log(`  - residencia: ${residencia} (tipo: ${typeof residencia})`);
     
     if (!playerId || playerId.trim() === '') {
-      console.log("❌ Player ID vacío o inválido");
       return res.status(400).json({ error: "Player ID es requerido" });
     }
     
     const uniqueId = `${playerId}_${residencia}_${Date.now()}`;
-    console.log(`🔧 ID único generado: ${uniqueId}`);
     
     const existing = await PlayerRegistry.findOne({ 
       originalPlayerId: playerId, 
@@ -224,31 +140,10 @@ router.post("/register", async (req, res) => {
         residencia: residencia.toString(),   
         createdAt: new Date()
       });
-      
-      console.log(`✅ Dispositivo registrado:`, {
-        playerId: newPlayer.playerId,
-        originalPlayerId: newPlayer.originalPlayerId,  
-        fraccId: newPlayer.fraccId,
-        residencia: newPlayer.residencia
-      });
-      
-      const verificacion = await PlayerRegistry.findById(newPlayer._id);
-      console.log(`🔍 VERIFICACIÓN POST-CREACIÓN:`, {
-        originalPlayerId: verificacion.originalPlayerId,
-        saved: verificacion.originalPlayerId !== undefined
-      });
-      
     } else {
       existing.playerId = uniqueId;  
       existing.createdAt = new Date();
       await existing.save();
-      
-      console.log(`🔄 Dispositivo actualizado:`, {
-        playerId: existing.playerId,
-        originalPlayerId: existing.originalPlayerId,
-        fraccId: existing.fraccId,
-        residencia: existing.residencia
-      });
     }
     
     const totalEnCasa = await PlayerRegistry.countDocuments({ 
@@ -262,10 +157,6 @@ router.post("/register", async (req, res) => {
       originalPlayerId: { $exists: true, $ne: null, $ne: '' }
     });
     
-    console.log(`📊 RESUMEN CASA ${residencia}:`);
-    console.log(`  - Total registros: ${totalEnCasa}`);
-    console.log(`  - Con Player ID válido: ${conPlayerIdValido}`);
-    
     res.json({ 
       success: true, 
       message: "Dispositivo registrado exitosamente",
@@ -277,7 +168,7 @@ router.post("/register", async (req, res) => {
     });
     
   } catch (error) {
-    console.error("❌ Error registrando:", error);
+    console.error("Error registrando dispositivo:", error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -289,11 +180,6 @@ router.get("/verify/:fraccId/:residencia", async (req, res) => {
     const registros = await PlayerRegistry.find({ 
       fraccId, 
       residencia: residencia.toString() 
-    });
-    
-    console.log(`🔍 VERIFICACIÓN CASA ${residencia}:`);
-    registros.forEach((reg, index) => {
-      console.log(`  ${index + 1}. originalPlayerId: "${reg.originalPlayerId}" | playerId: "${reg.playerId}"`);
     });
     
     const validos = registros.filter(r => r.originalPlayerId && r.originalPlayerId.length > 10);
@@ -317,7 +203,6 @@ router.get("/verify/:fraccId/:residencia", async (req, res) => {
 router.get("/devices/:fraccId/:residencia", async (req, res) => {
   try {
     const { fraccId, residencia } = req.params;
-    console.log(`🔍 Verificando dispositivos para casa ${residencia}`);
     
     const playersRegistry = await PlayerRegistry.find({ 
       fraccId, 
@@ -342,7 +227,7 @@ router.get("/devices/:fraccId/:residencia", async (req, res) => {
     });
     
   } catch (error) {
-    console.error("❌ Error verificando dispositivos:", error);
+    console.error("Error verificando dispositivos:", error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -350,14 +235,11 @@ router.get("/devices/:fraccId/:residencia", async (req, res) => {
 router.delete("/clear/:fraccId/:residencia", async (req, res) => {
   try {
     const { fraccId, residencia } = req.params;
-    console.log(`🗑️ Limpiando registros de casa ${residencia}`);
     
     const deleted = await PlayerRegistry.deleteMany({ 
       fraccId, 
       residencia: residencia.toString() 
     });
-    
-    console.log(`🗑️ Eliminados ${deleted.deletedCount} registros`);
     
     res.json({
       mensaje: "Registros eliminados",
@@ -381,7 +263,7 @@ router.get("/stats/:fraccId/:residencia", async (req, res) => {
       registeredAt: playersEnCasa.map(p => p.createdAt)
     });
   } catch (error) {
-    console.error("❌ Error obteniendo estadísticas:", error);
+    console.error("Error obteniendo estadísticas:", error);
     res.status(500).json({ error: "Error obteniendo estadísticas" });
   }
 });
@@ -392,7 +274,7 @@ router.get("/:fraccId/:residencia", async (req, res) => {
     const notificaciones = await Notificacion.find({ fraccId, residencia }).sort({ fecha: -1 });
     res.status(200).json(notificaciones);
   } catch (error) {
-    console.error("❌ Error al obtener historial:", error);
+    console.error("Error al obtener historial:", error);
     res.status(500).json({ error: "Error al obtener notificaciones" });
   }
 });
@@ -428,18 +310,10 @@ setInterval(async () => {
       { resultado: "PENDIENTE", fecha: { $lte: new Date(Date.now() - 10 * 60 * 1000) } },
       { resultado: "IGNORADO" }
     );
-    
-    if (notificacionesActualizadas.modifiedCount > 0) {
-      console.log(`${notificacionesActualizadas.modifiedCount} notificaciones marcadas como IGNORADO`);
-    }
 
     const playersLimpiados = await PlayerRegistry.deleteMany({
       createdAt: { $lte: hace30Dias }
     });
-    
-    if (playersLimpiados.deletedCount > 0) {
-      console.log(`🧹 ${playersLimpiados.deletedCount} registros antiguos eliminados`);
-    }
     
   } catch (e) {
     console.error("Error en limpieza:", e.message);

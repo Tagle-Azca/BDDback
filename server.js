@@ -10,6 +10,7 @@ const authRoutes = require("./routes/adminAuth.routes");
 const fraccRoutes = require("./routes/fracc.routes");
 const reportesRoutes = require("./routes/reportes.routes");
 const notificationRoutes = require("./routes/notification.routes");
+const qrPuertaRoutes = require("./routes/qr-puerta");
 
 const app = express();
 const server = http.createServer(app);
@@ -107,10 +108,9 @@ app.use("/api/fraccionamientos", fraccRoutes);
 app.use("/api/residencias", residenciasRoutes);
 app.use("/api/reportes", reportesRoutes);
 app.use("/api/notifications", notificationRoutes);
-
+app.use("/api/qr-puerta", qrPuertaRoutes);
 const PORT = process.env.PORT || 5002;
 
-// 🚀 Iniciar servidor
 server.listen(PORT, "0.0.0.0", () => {
   console.log(`Servidor corriendo en puerto ${PORT}`);
   console.log(`WebSocket habilitado`);
