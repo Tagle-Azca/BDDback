@@ -16,15 +16,19 @@ const crearReporte = async (req, res) => {
     }
 
     const notificationData = {
-      headings: { en: 'Nueva Visita' },
-      contents: { en: `Visita registrada para la casa ${numeroCasa}: ${nombre} - ${motivo}` },
+      headings: { en: nombre },
+      contents: { en: motivo },
       include_player_ids: [playerId],
       data: {
         id: origen === 'app' && nuevoReporte ? nuevoReporte._id.toString() : '',
         nombre,
         motivo,
+        titulo: nombre,
+        descripcion: motivo,
         foto: foto || '',
         fraccId,
+        numeroCasa,
+        tipo: 'solicitud_acceso',
       },
     };
 
@@ -67,7 +71,7 @@ const obtenerPendientePorCasa = async (req, res) => {
 
     res.status(200).json(reportePendiente);
   } catch (error) {
-    console.error('❌ Error al obtener reporte pendiente:', error);
+    console.error('Error al obtener reporte pendiente:', error);
     res.status(500).json({ message: 'Error interno del servidor' });
   }
 };

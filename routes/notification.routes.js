@@ -415,7 +415,7 @@ router.post("/responder", async (req, res) => {
 
     res.status(200).json({ mensaje: "Respuesta registrada correctamente" });
   } catch (error) {
-    console.error("❌ Error al registrar respuesta:", error);
+    console.error("Error al registrar respuesta:", error);
     res.status(500).json({ error: "Error al registrar respuesta" });
   }
 });
@@ -430,7 +430,7 @@ setInterval(async () => {
     );
     
     if (notificacionesActualizadas.modifiedCount > 0) {
-      console.log(`🕒 ${notificacionesActualizadas.modifiedCount} notificaciones marcadas como IGNORADO`);
+      console.log(`${notificacionesActualizadas.modifiedCount} notificaciones marcadas como IGNORADO`);
     }
 
     const playersLimpiados = await PlayerRegistry.deleteMany({
@@ -442,7 +442,7 @@ setInterval(async () => {
     }
     
   } catch (e) {
-    console.error("🧨 Error en limpieza:", e.message);
+    console.error("Error en limpieza:", e.message);
   }
 }, 60 * 1000); 
 
