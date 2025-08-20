@@ -302,6 +302,71 @@ router.post("/responder", async (req, res) => {
   }
 });
 
+
+
+router.post('/:fraccId/abrir-puerta', async (req, res) => {
+  const { userId, qrCode } = req.body;
+  
+  try {
+    const fraccionamiento = await buscarFraccionamiento(req.params.fraccId);
+    if (!fraccionamiento) {
+      return res.json({ success: false, errorMessage: "Fraccionamiento no encontrado" });
+    }
+
+    if (!qrCode) {
+      return res.json({ success: false, errorMessage: "Código QR es requerido" });
+    }
+
+    const qrFraccId = extraerFraccIdDelQR(qrCode);
+    if (!qrFraccId || qrFraccId !== req.params.fraccId) {
+      return res.json({ success: false, errorMessage: "El código QR no corresponde a este fraccionamiento" });
+    }
+
+    if (fraccionamiento.fechaExpedicion && new Date() > fraccionamiento.fechaExpedicion) {
+      return res.json({ success: false, errorMessage: "El código QR ha expirado" });
+    }
+
+    if (userId) {
+      const usuarioValido = validarUsuarioEnFraccionamiento(fraccionamiento, userId);
+      if (!usuarioValido) {
+        return res.json({ success: false, errorMessage: "Usuario no autorizado en este fraccionamiento" });
+      }
+    }
+
+    await Fraccionamiento.updateOne(
+      { _id: req.params.fraccId }, 
+      { $set: { puerta: true } }
+    );
+    
+    setTimeout(async () => {
+      await Fraccionamiento.updateOne(
+        { _id: req.params.fraccId }, 
+        { $set: { puerta: false } }
+      );
+    }, 10000);
+    
+    res.json({ success: true, message: "Portón abierto correctamente" });
+
+  } catch (error) {
+    res.json({ success: false, errorMessage: "Error interno del servidor" });
+  }
+});
+
+router.post('/:fraccId/rechazar-puerta', async (req, res) => {
+  const { userId } = req.body;
+  
+  try {
+    const fraccionamiento = await buscarFraccionamiento(req.params.fraccId);
+    if (!fraccionamiento) {
+      return res.json({ success: false, errorMessage: "Fraccionamiento no encontrado" });
+    }
+
+    res.json({ success: true, message: "Rechazo de apertura registrado correctamente" });
+  } catch (error) {
+    res.json({ success: false, errorMessage: "Error al rechazar puerta" });
+  }
+});
+
 setInterval(async () => {
   const hace30Dias = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
   
