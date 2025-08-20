@@ -9,6 +9,40 @@ const ONESIGNAL_API_KEY = process.env.ONESIGNAL_API_KEY;
 const Fraccionamiento = require("../models/fraccionamiento");
 
 
+
+const validarFraccionamiento = async (req, res, next) => {
+  try {
+    const fracc = await Fraccionamiento.findById(req.params.fraccId);
+    
+    if (!fracc) {
+      return res.status(404).json({ error: "Fraccionamiento no encontrado" });
+    }
+    
+    req.fraccionamiento = fracc;
+    next();
+  } catch (error) {
+    res.status(500).json({ error: "Error interno del servidor" });
+  }
+};
+
+
+const validarUsuarioEnFraccionamiento = (fraccionamiento, residenteId) => {
+  for (const residencia of fraccionamiento.residencias) {
+    const residente = residencia.residentes.find(r => 
+      r._id.toString() === residenteId && r.activo === true
+    );
+    if (residente) return true;
+  }
+  return false;
+};
+
+const manejarError = (res, error, mensaje = "Error interno del servidor", status = 500) => {
+  console.error(mensaje, error);
+  res.status(status).json({ error: mensaje });
+};
+
+
+
 router.post("/send-notification", async (req, res) => {
   try {
     const { title, body, fraccId, residencia, foto } = req.body;
@@ -399,38 +433,6 @@ router.post('/:fraccId/notificacion/rechazar-acceso', validarFraccionamiento, as
     manejarError(res, error, "Error al procesar rechazo");
   }
 });
-
-
-const validarFraccionamiento = async (req, res, next) => {
-  try {
-    const fracc = await Fraccionamiento.findById(req.params.fraccId);
-    
-    if (!fracc) {
-      return res.status(404).json({ error: "Fraccionamiento no encontrado" });
-    }
-    
-    req.fraccionamiento = fracc;
-    next();
-  } catch (error) {
-    res.status(500).json({ error: "Error interno del servidor" });
-  }
-};
-
-
-const validarUsuarioEnFraccionamiento = (fraccionamiento, residenteId) => {
-  for (const residencia of fraccionamiento.residencias) {
-    const residente = residencia.residentes.find(r => 
-      r._id.toString() === residenteId && r.activo === true
-    );
-    if (residente) return true;
-  }
-  return false;
-};
-
-const manejarError = (res, error, mensaje = "Error interno del servidor", status = 500) => {
-  console.error(mensaje, error);
-  res.status(status).json({ error: mensaje });
-};
 
 
 module.exports = router;
