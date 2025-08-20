@@ -406,13 +406,34 @@ router.post("/login", async (req, res) => {
   }
 });
 
-router.post('/:fraccId/notificacion/abrir-puerta', validarFraccionamiento, async (req, res) => {
-  const { residenteId } = req.body;
+
+router.post('/:fraccId/abrir-puerta', async (req, res) => {
+  const { userId, qrCode } = req.body;
   
   try {
-    const usuarioValido = validarUsuarioEnFraccionamiento(req.fraccionamiento, residenteId);
-    if (!usuarioValido) {
-      return res.json({ success: false, message: "Residente no autorizado en este fraccionamiento" });
+    const fraccionamiento = await buscarFraccionamiento(req.params.fraccId);
+    if (!fraccionamiento) {
+      return res.json({ success: false, errorMessage: "Fraccionamiento no encontrado" });
+    }
+
+    if (!qrCode) {
+      return res.json({ success: false, errorMessage: "Código QR es requerido" });
+    }
+
+    const qrFraccId = extraerFraccIdDelQR(qrCode);
+    if (!qrFraccId || qrFraccId !== req.params.fraccId) {
+      return res.json({ success: false, errorMessage: "El código QR no corresponde a este fraccionamiento" });
+    }
+
+    if (fraccionamiento.fechaExpedicion && new Date() > fraccionamiento.fechaExpedicion) {
+      return res.json({ success: false, errorMessage: "El código QR ha expirado" });
+    }
+
+    if (userId) {
+      const usuarioValido = validarUsuarioEnFraccionamiento(fraccionamiento, userId);
+      if (!usuarioValido) {
+        return res.json({ success: false, errorMessage: "Usuario no autorizado en este fraccionamiento" });
+      }
     }
 
     await Fraccionamiento.updateOne(
@@ -421,49 +442,32 @@ router.post('/:fraccId/notificacion/abrir-puerta', validarFraccionamiento, async
     );
     
     setTimeout(async () => {
-      try {
-        await Fraccionamiento.updateOne(
-          { _id: req.params.fraccId }, 
-          { $set: { puerta: false } }
-        );
-      } catch (error) {
-        console.error('Error cerrando puerta automáticamente:', error);
-      }
+      await Fraccionamiento.updateOne(
+        { _id: req.params.fraccId }, 
+        { $set: { puerta: false } }
+      );
     }, 10000);
     
-    res.json({ 
-      success: true, 
-      message: "Acceso concedido - Puerta abierta",
-      accion: "ACEPTADO"
-    });
+    res.json({ success: true, message: "Portón abierto correctamente" });
 
   } catch (error) {
-    console.error('Error abriendo puerta desde notificación:', error);
-    manejarError(res, error, "Error interno del servidor");
+    res.json({ success: false, errorMessage: "Error interno del servidor" });
   }
 });
 
-router.post('/:fraccId/notificacion/rechazar-acceso', validarFraccionamiento, async (req, res) => {
-  const { residenteId, motivo } = req.body;
+router.post('/:fraccId/rechazar-puerta', async (req, res) => {
+  const { userId } = req.body;
   
   try {
-    const usuarioValido = validarUsuarioEnFraccionamiento(req.fraccionamiento, residenteId);
-    if (!usuarioValido) {
-      return res.json({ success: false, message: "Residente no autorizado en este fraccionamiento" });
+    const fraccionamiento = await buscarFraccionamiento(req.params.fraccId);
+    if (!fraccionamiento) {
+      return res.json({ success: false, errorMessage: "Fraccionamiento no encontrado" });
     }
 
-    res.json({ 
-      success: true, 
-      message: "Acceso denegado correctamente",
-      accion: "RECHAZADO"
-    });
-
+    res.json({ success: true, message: "Rechazo de apertura registrado correctamente" });
   } catch (error) {
-    console.error('Error rechazando acceso desde notificación:', error);
-    manejarError(res, error, "Error al procesar rechazo");
+    res.json({ success: false, errorMessage: "Error al rechazar puerta" });
   }
 });
-
-
 
 module.exports = router;

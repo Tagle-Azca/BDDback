@@ -1,10 +1,13 @@
 const express = require("express");
 const router = express.Router();
 const fetch = require("node-fetch");
+const Reporte = require("../models/Reportes");
 const Notificacion = require("../models/Notification");
 const PlayerRegistry = require("../models/playerRegistry");
 const ONESIGNAL_APP_ID = process.env.ONESIGNAL_APP_ID;
 const ONESIGNAL_API_KEY = process.env.ONESIGNAL_API_KEY;
+const Fraccionamiento = require("../models/fraccionamiento");
+
 
 router.post("/send-notification", async (req, res) => {
   try {
@@ -302,33 +305,15 @@ router.post("/responder", async (req, res) => {
   }
 });
 
-router.post('/:fraccId/abrir-puerta', async (req, res) => {
-  const { userId, qrCode } = req.body;
+
+
+router.post('/:fraccId/notificacion/abrir-puerta', validarFraccionamiento, async (req, res) => {
+  const { residenteId, notificationId, residenteNombre } = req.body;
   
   try {
-    const fraccionamiento = await buscarFraccionamiento(req.params.fraccId);
-    if (!fraccionamiento) {
-      return res.json({ success: false, errorMessage: "Fraccionamiento no encontrado" });
-    }
-
-    if (!qrCode) {
-      return res.json({ success: false, errorMessage: "Código QR es requerido" });
-    }
-
-    const qrFraccId = extraerFraccIdDelQR(qrCode);
-    if (!qrFraccId || qrFraccId !== req.params.fraccId) {
-      return res.json({ success: false, errorMessage: "El código QR no corresponde a este fraccionamiento" });
-    }
-
-    if (fraccionamiento.fechaExpedicion && new Date() > fraccionamiento.fechaExpedicion) {
-      return res.json({ success: false, errorMessage: "El código QR ha expirado" });
-    }
-
-    if (userId) {
-      const usuarioValido = validarUsuarioEnFraccionamiento(fraccionamiento, userId);
-      if (!usuarioValido) {
-        return res.json({ success: false, errorMessage: "Usuario no autorizado en este fraccionamiento" });
-      }
+    const usuarioValido = validarUsuarioEnFraccionamiento(req.fraccionamiento, residenteId);
+    if (!usuarioValido) {
+      return res.json({ success: false, message: "Residente no autorizado en este fraccionamiento" });
     }
 
     await Fraccionamiento.updateOne(
@@ -337,32 +322,115 @@ router.post('/:fraccId/abrir-puerta', async (req, res) => {
     );
     
     setTimeout(async () => {
-      await Fraccionamiento.updateOne(
-        { _id: req.params.fraccId }, 
-        { $set: { puerta: false } }
-      );
+      try {
+        await Fraccionamiento.updateOne(
+          { _id: req.params.fraccId }, 
+          { $set: { puerta: false } }
+        );
+      } catch (error) {
+        console.error('Error cerrando puerta automáticamente:', error);
+      }
     }, 10000);
+
+    // AGREGAR AQUÍ: Actualizar el reporte
+    if (notificationId) {
+      await Reporte.findByIdAndUpdate(notificationId, {
+        estatus: 'aceptado',
+        autorizadoPor: residenteNombre,
+        fechaAutorizacion: new Date()
+      });
+      
+      const io = req.app.get('io');
+      if (io) {
+        io.emit('reporteActualizado', {
+          reporteId: notificationId,
+          estatus: 'ACEPTADO',
+          autorizadoPor: residenteNombre || 'Usuario'
+        });
+      }
+    }
     
-    res.json({ success: true, message: "Portón abierto correctamente" });
+    res.json({ 
+      success: true, 
+      message: "Acceso concedido - Puerta abierta",
+      accion: "ACEPTADO"
+    });
 
   } catch (error) {
-    res.json({ success: false, errorMessage: "Error interno del servidor" });
+    console.error('Error abriendo puerta desde notificación:', error);
+    manejarError(res, error, "Error interno del servidor");
   }
 });
 
-router.post('/:fraccId/rechazar-puerta', async (req, res) => {
-  const { userId } = req.body;
+router.post('/:fraccId/notificacion/rechazar-acceso', validarFraccionamiento, async (req, res) => {
+  const { residenteId, notificationId, residenteNombre, motivo } = req.body;
   
   try {
-    const fraccionamiento = await buscarFraccionamiento(req.params.fraccId);
-    if (!fraccionamiento) {
-      return res.json({ success: false, errorMessage: "Fraccionamiento no encontrado" });
+    const usuarioValido = validarUsuarioEnFraccionamiento(req.fraccionamiento, residenteId);
+    if (!usuarioValido) {
+      return res.json({ success: false, message: "Residente no autorizado en este fraccionamiento" });
     }
 
-    res.json({ success: true, message: "Rechazo de apertura registrado correctamente" });
+    if (notificationId) {
+      await Reporte.findByIdAndUpdate(notificationId, {
+        estatus: 'rechazado',
+        autorizadoPor: residenteNombre,
+        fechaAutorizacion: new Date()
+      });
+      
+      const io = req.app.get('io');
+      if (io) {
+        io.emit('reporteActualizado', {
+          reporteId: notificationId,
+          estatus: 'RECHAZADO',
+          autorizadoPor: residenteNombre || 'Usuario'
+        });
+      }
+    }
+
+    res.json({ 
+      success: true, 
+      message: "Acceso denegado correctamente",
+      accion: "RECHAZADO"
+    });
+
   } catch (error) {
-    res.json({ success: false, errorMessage: "Error al rechazar puerta" });
+    console.error('Error rechazando acceso desde notificación:', error);
+    manejarError(res, error, "Error al procesar rechazo");
   }
 });
+
+
+const validarFraccionamiento = async (req, res, next) => {
+  try {
+    const fracc = await Fraccionamiento.findById(req.params.fraccId);
+    
+    if (!fracc) {
+      return res.status(404).json({ error: "Fraccionamiento no encontrado" });
+    }
+    
+    req.fraccionamiento = fracc;
+    next();
+  } catch (error) {
+    res.status(500).json({ error: "Error interno del servidor" });
+  }
+};
+
+
+const validarUsuarioEnFraccionamiento = (fraccionamiento, residenteId) => {
+  for (const residencia of fraccionamiento.residencias) {
+    const residente = residencia.residentes.find(r => 
+      r._id.toString() === residenteId && r.activo === true
+    );
+    if (residente) return true;
+  }
+  return false;
+};
+
+const manejarError = (res, error, mensaje = "Error interno del servidor", status = 500) => {
+  console.error(mensaje, error);
+  res.status(status).json({ error: mensaje });
+};
+
 
 module.exports = router;

@@ -7,7 +7,7 @@ const notificacionSchema = new mongoose.Schema({
   residencia: { type: String, required: true },
   foto: { type: String },
   fecha: { type: Date, default: Date.now },
-  resultado: { type: String, default: "PENDIENTE", enum: ["PENDIENTE", "ACEPTADO", "CANCELADO", "IGNORADO"] },
+  resultado: { type: String, enum: ["ACEPTADO", "RECHAZADO", "EXPIRADO", "CANCELADO"] },
 });
 
 module.exports = mongoose.model("Notificacion", notificacionSchema);
