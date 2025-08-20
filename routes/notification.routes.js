@@ -302,8 +302,6 @@ router.post("/responder", async (req, res) => {
   }
 });
 
-
-
 router.post('/:fraccId/abrir-puerta', async (req, res) => {
   const { userId, qrCode } = req.body;
   
@@ -366,23 +364,5 @@ router.post('/:fraccId/rechazar-puerta', async (req, res) => {
     res.json({ success: false, errorMessage: "Error al rechazar puerta" });
   }
 });
-
-setInterval(async () => {
-  const hace30Dias = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-  
-  try {
-    const notificacionesActualizadas = await Notificacion.updateMany(
-      { resultado: "PENDIENTE", fecha: { $lte: new Date(Date.now() - 10 * 60 * 1000) } },
-      { resultado: "IGNORADO" }
-    );
-
-    const playersLimpiados = await PlayerRegistry.deleteMany({
-      createdAt: { $lte: hace30Dias }
-    });
-    
-  } catch (e) {
-    console.error("Error en limpieza:", e.message);
-  }
-}, 60 * 1000); 
 
 module.exports = router;
