@@ -324,7 +324,7 @@ const subirImagenCloudinary = async (filePath) => {
   }
 };
 
-routerrouter.post("/:fraccId/casas/:numero/visitas", 
+router.post("/:fraccId/casas/:numero/visitas", 
   validarFraccionamiento, 
   validarCasa, 
   upload.single("FotoVisita"), 
