@@ -280,7 +280,7 @@ router.post("/residencias/:fraccId/:numero/login", validarFraccionamiento, valid
   }
 });
 
-const enviarNotificacion = async (nombre, motivo, fraccId, residencia, foto) => {
+const enviarNotificacion = async (nombre, motivo, fraccId, residencia, foto, reporteId) => {
   if (!process.env.ONESIGNAL_API_KEY) {
     return;
   }
@@ -297,6 +297,8 @@ const enviarNotificacion = async (nombre, motivo, fraccId, residencia, foto) => 
         foto,
         nombre,
         motivo,
+        reporteId,
+        tipo: 'solicitud_acceso'
       }),
     });
   } catch (err) {
@@ -322,7 +324,7 @@ const subirImagenCloudinary = async (filePath) => {
   }
 };
 
-router.post("/:fraccId/casas/:numero/visitas", 
+routerrouter.post("/:fraccId/casas/:numero/visitas", 
   validarFraccionamiento, 
   validarCasa, 
   upload.single("FotoVisita"), 
@@ -336,14 +338,13 @@ router.post("/:fraccId/casas/:numero/visitas",
 
       const fotoUrl = await subirImagenCloudinary(req.file?.path);
 
-      await Reporte.create({
+      const reporteCreado = await Reporte.create({
         fraccId: req.params.fraccId,
         numeroCasa: req.params.numero,
         nombre: nombreVisitante,
         motivo,
         foto: fotoUrl,
         tiempo: new Date(),
-        estatus: 'pendiente',
       });
 
       if (!req.casa.visitas) req.casa.visitas = [];
@@ -361,7 +362,8 @@ router.post("/:fraccId/casas/:numero/visitas",
         motivo,
         req.params.fraccId,
         req.params.numero,
-        fotoUrl
+        fotoUrl,
+        reporteCreado._id.toString()
       );
 
       res.status(201).json({ mensaje: "Visita registrada con éxito", foto: fotoUrl });
