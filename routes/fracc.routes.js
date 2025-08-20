@@ -79,6 +79,16 @@ const validarCasa = (req, res, next) => {
   next();
 };
 
+const validarUsuarioEnFraccionamiento = (fraccionamiento, residenteId) => {
+  for (const residencia of fraccionamiento.residencias) {
+    const residente = residencia.residentes.find(r => 
+      r._id.toString() === residenteId && r.activo === true
+    );
+    if (residente) return true;
+  }
+  return false;
+};
+
 router.post("/", async (req, res) => {
   try {
     const hashedPassword = await bcrypt.hash(req.body.contrasena, 10);
@@ -393,5 +403,65 @@ router.post("/login", async (req, res) => {
     manejarError(res, error, "Error del servidor al iniciar sesión");
   }
 });
+
+router.post('/:fraccId/notificacion/abrir-puerta', validarFraccionamiento, async (req, res) => {
+  const { residenteId } = req.body;
+  
+  try {
+    const usuarioValido = validarUsuarioEnFraccionamiento(req.fraccionamiento, residenteId);
+    if (!usuarioValido) {
+      return res.json({ success: false, message: "Residente no autorizado en este fraccionamiento" });
+    }
+
+    await Fraccionamiento.updateOne(
+      { _id: req.params.fraccId }, 
+      { $set: { puerta: true } }
+    );
+    
+    setTimeout(async () => {
+      try {
+        await Fraccionamiento.updateOne(
+          { _id: req.params.fraccId }, 
+          { $set: { puerta: false } }
+        );
+      } catch (error) {
+        console.error('Error cerrando puerta automáticamente:', error);
+      }
+    }, 10000);
+    
+    res.json({ 
+      success: true, 
+      message: "Acceso concedido - Puerta abierta",
+      accion: "ACEPTADO"
+    });
+
+  } catch (error) {
+    console.error('Error abriendo puerta desde notificación:', error);
+    manejarError(res, error, "Error interno del servidor");
+  }
+});
+
+router.post('/:fraccId/notificacion/rechazar-acceso', validarFraccionamiento, async (req, res) => {
+  const { residenteId, motivo } = req.body;
+  
+  try {
+    const usuarioValido = validarUsuarioEnFraccionamiento(req.fraccionamiento, residenteId);
+    if (!usuarioValido) {
+      return res.json({ success: false, message: "Residente no autorizado en este fraccionamiento" });
+    }
+
+    res.json({ 
+      success: true, 
+      message: "Acceso denegado correctamente",
+      accion: "RECHAZADO"
+    });
+
+  } catch (error) {
+    console.error('Error rechazando acceso desde notificación:', error);
+    manejarError(res, error, "Error al procesar rechazo");
+  }
+});
+
+
 
 module.exports = router;
