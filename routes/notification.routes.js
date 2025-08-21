@@ -383,46 +383,48 @@ router.post('/:fraccId/notificacion/abrir-puerta', validarFraccionamiento, async
       }
     }, 10000);
 
-    if (reporteId) {
-      console.log('Buscando notificación con ID:', reporteId);
+    console.log('Buscando reporte pendiente para casa en fraccionamiento:', req.params.fraccId);
+    
+    const residente = req.fraccionamiento.residencias
+      .flatMap(r => r.residentes)
+      .find(r => r._id.toString() === residenteId);
+    
+    if (residente) {
+      const numeroCasa = req.fraccionamiento.residencias
+        .find(r => r.residentes.some(res => res._id.toString() === residenteId))?.numeroCasa;
       
-      const notificacion = await Notificacion.findById(reporteId);
+      console.log('Número de casa encontrado:', numeroCasa);
       
-      if (notificacion) {
-        console.log('Notificación encontrada, buscando reporte relacionado...');
-        
-        const reporteActualizado = await Reporte.findOneAndUpdate(
-          { 
-            fraccId: notificacion.fraccId,
-            numeroCasa: notificacion.residencia,
-            nombre: notificacion.titulo, 
-            tiempo: notificacion.fecha,  
-            estatus: 'pendiente'
-          },
-          {
-            estatus: 'aceptado',
-            autorizadoPor: residenteNombre,
-            fechaAutorizacion: new Date()
-          }, 
-          { new: true }
-        );
-        
-        console.log('Reporte actualizado:', reporteActualizado);
-        
-        if (reporteActualizado) {
-          const io = req.app.get('io');
-          if (io) {
-            io.emit('reporteActualizado', {
-              reporteId: reporteActualizado._id.toString(), 
-              estatus: 'ACEPTADO',
-              autorizadoPor: residenteNombre || 'Usuario'
-            });
-          }
-        } else {
-          console.log('No se encontró reporte correspondiente a la notificación');
+      const reporteActualizado = await Reporte.findOneAndUpdate(
+        { 
+          fraccId: req.params.fraccId,
+          numeroCasa: numeroCasa?.toString(),
+          estatus: 'pendiente'
+        },
+        {
+          estatus: 'aceptado',
+          autorizadoPor: residenteNombre,
+          fechaAutorizacion: new Date()
+        },
+        { 
+          new: true,
+          sort: { tiempo: -1 }
+        }
+      );
+      
+      console.log('Reporte actualizado:', reporteActualizado);
+      
+      if (reporteActualizado) {
+        const io = req.app.get('io');
+        if (io) {
+          io.emit('reporteActualizado', {
+            reporteId: reporteActualizado._id.toString(),
+            estatus: 'ACEPTADO',
+            autorizadoPor: residenteNombre || 'Usuario'
+          });
         }
       } else {
-        console.log('No se encontró la notificación con ID:', reporteId);
+        console.log('No se encontró reporte pendiente para la casa:', numeroCasa);
       }
     }
     
