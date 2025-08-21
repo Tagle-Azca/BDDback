@@ -4,27 +4,20 @@ const fetch = require("node-fetch");
 const Reporte = require("../models/Reportes");
 const Notificacion = require("../models/Notification");
 const PlayerRegistry = require("../models/playerRegistry");
-const ONESIGNAL_APP_ID = process.env.ONESIGNAL_APP_ID;
-const ONESIGNAL_API_KEY = process.env.ONESIGNAL_API_KEY;
 const Fraccionamiento = require("../models/fraccionamiento");
-
-
 
 const validarFraccionamiento = async (req, res, next) => {
   try {
     const fracc = await Fraccionamiento.findById(req.params.fraccId);
-    
     if (!fracc) {
       return res.status(404).json({ error: "Fraccionamiento no encontrado" });
     }
-    
     req.fraccionamiento = fracc;
     next();
   } catch (error) {
     res.status(500).json({ error: "Error interno del servidor" });
   }
 };
-
 
 const validarUsuarioEnFraccionamiento = (fraccionamiento, residenteId) => {
   for (const residencia of fraccionamiento.residencias) {
@@ -41,16 +34,126 @@ const manejarError = (res, error, mensaje = "Error interno del servidor", status
   res.status(status).json({ error: mensaje });
 };
 
+const obtenerDatosResidente = (fraccionamiento, residenteId) => {
+  const residente = fraccionamiento.residencias
+    .flatMap(r => r.residentes)
+    .find(r => r._id.toString() === residenteId);
+  
+  const numeroCasa = fraccionamiento.residencias
+    .find(r => r.residentes.some(res => res._id.toString() === residenteId))?.numeroCasa;
+  
+  return { residente, numeroCasa };
+};
 
-// REEMPLAZAR el endpoint send-notification en tu backend de notificaciones:
+const crearReporteDesdeNotificacion = async (notificacion, estatus, autorizadoPor, fraccId, numeroCasa) => {
+  const nuevoReporte = new Reporte({
+    fraccId: fraccId,
+    numeroCasa: numeroCasa?.toString(),
+    nombre: notificacion.titulo,
+    motivo: notificacion.body,
+    foto: notificacion.foto,
+    tiempo: notificacion.fecha,
+    estatus: estatus,
+    autorizadoPor: autorizadoPor
+  });
+
+  const reporteGuardado = await nuevoReporte.save();
+  console.log(`Reporte ${reporteGuardado._id} guardado como ${estatus.toUpperCase()}`);
+
+  await Notificacion.findByIdAndUpdate(notificacion._id, { respondida: true });
+  
+  return reporteGuardado;
+};
+
+const emitirSocketReporte = (io, reporteId, estatus, autorizadoPor) => {
+  if (io) {
+    io.emit('reporteActualizado', {
+      reporteId: reporteId,
+      estatus: estatus.toUpperCase(),
+      autorizadoPor: autorizadoPor
+    });
+  }
+};
+
+const procesarRespuestaNotificacion = async (req, res, accion) => {
+  const { residenteId, residenteNombre } = req.body;
+  
+  try {
+    const usuarioValido = validarUsuarioEnFraccionamiento(req.fraccionamiento, residenteId);
+    if (!usuarioValido) {
+      return res.json({ success: false, message: "Residente no autorizado en este fraccionamiento" });
+    }
+
+    if (accion === 'aceptado') {
+      await Fraccionamiento.updateOne(
+        { _id: req.params.fraccId }, 
+        { $set: { puerta: true } }
+      );
+      
+      setTimeout(async () => {
+        try {
+          await Fraccionamiento.updateOne(
+            { _id: req.params.fraccId }, 
+            { $set: { puerta: false } }
+          );
+        } catch (error) {
+          console.error('Error cerrando puerta automáticamente:', error);
+        }
+      }, 10000);
+    }
+
+    const { residente, numeroCasa } = obtenerDatosResidente(req.fraccionamiento, residenteId);
+    
+    if (residente) {
+      const notificacion = await Notificacion.findOne({
+        fraccId: req.params.fraccId,
+        residencia: numeroCasa?.toString(),
+        respondida: false
+      }).sort({ fecha: -1 });
+
+      if (notificacion) {
+        console.log(`Guardando reporte ${accion.toUpperCase()} para casa: ${numeroCasa}`);
+        
+        const reporteGuardado = await crearReporteDesdeNotificacion(
+          notificacion, 
+          accion, 
+          residenteNombre, 
+          req.params.fraccId, 
+          numeroCasa
+        );
+
+        const io = req.app.get('io');
+        emitirSocketReporte(io, reporteGuardado._id.toString(), accion, residenteNombre);
+      }
+    }
+    
+    const mensaje = accion === 'aceptado' ? 
+      "Acceso concedido - Puerta abierta" : 
+      "Acceso denegado correctamente";
+    
+    res.json({ 
+      success: true, 
+      message: mensaje,
+      accion: accion.toUpperCase()
+    });
+
+  } catch (error) {
+    console.error(`Error ${accion} acceso desde notificación:`, error);
+    manejarError(res, error, "Error interno del servidor");
+  }
+};
+
+router.post('/:fraccId/notificacion/abrir-puerta', validarFraccionamiento, async (req, res) => {
+  await procesarRespuestaNotificacion(req, res, 'aceptado');
+});
+
+router.post('/:fraccId/notificacion/rechazar-acceso', validarFraccionamiento, async (req, res) => {
+  await procesarRespuestaNotificacion(req, res, 'rechazado');
+});
 
 router.post("/send-notification", async (req, res) => {
   try {
-    const { title, body, fraccId, residencia, foto, reporteId } = req.body; // ⭐ AGREGAR reporteId
-
-    console.log('=== DEBUG SEND NOTIFICATION ===');
-    console.log('reporteId recibido:', reporteId);
-    console.log('===============================');
+    const { title, body, fraccId, residencia, foto, reporteId } = req.body;
 
     const playersEnCasa = await PlayerRegistry.find({ 
       fraccId: fraccId, 
@@ -103,10 +206,6 @@ router.post("/send-notification", async (req, res) => {
       }
     };
 
-    console.log('=== PAYLOAD ONESIGNAL ===');
-    console.log('reporteId en payload:', payload.data.reporteId);
-    console.log('========================');
-
     const response = await fetch("https://onesignal.com/api/v1/notifications", {
       method: "POST",
       headers: {
@@ -117,7 +216,6 @@ router.post("/send-notification", async (req, res) => {
     });
 
     const resultado = await response.json();
-
     await Notificacion.create({ title, body, fraccId, residencia, foto });
 
     res.json({ 
@@ -134,379 +232,37 @@ router.post("/send-notification", async (req, res) => {
   }
 });
 
-router.get("/debug/:fraccId/:residencia", async (req, res) => {
+const marcarNotificacionesExpiradas = async () => {
   try {
-    const { fraccId, residencia } = req.params;
+    const hace10Minutos = new Date(Date.now() - 10 * 60 * 1000);
     
-    const todos = await PlayerRegistry.find({});
-    const porFracc = await PlayerRegistry.find({ fraccId });
-    const porRes = await PlayerRegistry.find({ residencia });
-    const combinado = await PlayerRegistry.find({ fraccId, residencia });
-    
-    res.json({
-      parametros: { fraccId, residencia },
-      conteos: {
-        total_registros: todos.length,
-        por_fraccionamiento: porFracc.length,
-        por_residencia: porRes.length,
-        combinado: combinado.length
-      },
-      todos_los_registros: todos.map(p => ({
-        fraccId: p.fraccId,
-        residencia: p.residencia,
-        playerId: p.playerId,
-        originalPlayerId: p.originalPlayerId,
-        createdAt: p.createdAt
-      })),
-      encontrados_combinado: combinado.map(p => ({
-        fraccId: p.fraccId,
-        residencia: p.residencia,
-        playerId: p.playerId,
-        originalPlayerId: p.originalPlayerId
-      }))
+    const notificacionesExpiradas = await Notificacion.find({
+      fecha: { $lt: hace10Minutos },
+      respondida: false
     });
-    
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
 
-router.post("/register", async (req, res) => {
-  try {
-    const { playerId, fraccId, residencia } = req.body;
-    
-    if (!playerId || playerId.trim() === '') {
-      return res.status(400).json({ error: "Player ID es requerido" });
-    }
-    
-    const uniqueId = `${playerId}_${residencia}_${Date.now()}`;
-    
-    const existing = await PlayerRegistry.findOne({ 
-      originalPlayerId: playerId, 
-      fraccId, 
-      residencia 
-    });
-    
-    if (!existing) {
-      const newPlayer = await PlayerRegistry.create({
-        playerId: uniqueId,                    
-        originalPlayerId: playerId,           
-        fraccId: fraccId,
-        residencia: residencia.toString(),   
-        createdAt: new Date()
-      });
-    } else {
-      existing.playerId = uniqueId;  
-      existing.createdAt = new Date();
-      await existing.save();
-    }
-    
-    const totalEnCasa = await PlayerRegistry.countDocuments({ 
-      fraccId, 
-      residencia: residencia.toString() 
-    });
-    
-    const conPlayerIdValido = await PlayerRegistry.countDocuments({ 
-      fraccId, 
-      residencia: residencia.toString(),
-      originalPlayerId: { $exists: true, $ne: null, $ne: '' }
-    });
-    
-    res.json({ 
-      success: true, 
-      message: "Dispositivo registrado exitosamente",
-      debug: {
-        totalEnCasa,
-        conPlayerIdValido,
-        playerIdRecibido: playerId
-      }
-    });
-    
-  } catch (error) {
-    console.error("Error registrando dispositivo:", error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-router.get("/verify/:fraccId/:residencia", async (req, res) => {
-  try {
-    const { fraccId, residencia } = req.params;
-    
-    const registros = await PlayerRegistry.find({ 
-      fraccId, 
-      residencia: residencia.toString() 
-    });
-    
-    const validos = registros.filter(r => r.originalPlayerId && r.originalPlayerId.length > 10);
-    
-    res.json({
-      total: registros.length,
-      validos: validos.length,
-      registros: registros.map(r => ({
-        originalPlayerId: r.originalPlayerId,
-        playerId: r.playerId,
-        createdAt: r.createdAt,
-        valido: r.originalPlayerId && r.originalPlayerId.length > 10
-      }))
-    });
-    
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-router.get("/devices/:fraccId/:residencia", async (req, res) => {
-  try {
-    const { fraccId, residencia } = req.params;
-    
-    const playersRegistry = await PlayerRegistry.find({ 
-      fraccId, 
-      residencia: residencia.toString() 
-    });
-    
-    const devices = playersRegistry.map(p => ({
-      playerId: p.playerId,
-      originalPlayerId: p.originalPlayerId,
-      createdAt: p.createdAt
-    }));
-    
-    const uniquePlayerIds = [...new Set(playersRegistry.map(p => p.originalPlayerId || p.playerId))];
-    
-    res.json({
-      casa: residencia,
-      fraccionamiento: fraccId,
-      totalDevices: devices.length,
-      uniqueDevices: uniquePlayerIds.length,
-      devices: devices,
-      uniquePlayerIds: uniquePlayerIds
-    });
-    
-  } catch (error) {
-    console.error("Error verificando dispositivos:", error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-router.delete("/clear/:fraccId/:residencia", async (req, res) => {
-  try {
-    const { fraccId, residencia } = req.params;
-    
-    const deleted = await PlayerRegistry.deleteMany({ 
-      fraccId, 
-      residencia: residencia.toString() 
-    });
-    
-    res.json({
-      mensaje: "Registros eliminados",
-      eliminados: deleted.deletedCount
-    });
-    
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-router.get("/stats/:fraccId/:residencia", async (req, res) => {
-  try {
-    const { fraccId, residencia } = req.params;
-    
-    const playersEnCasa = await PlayerRegistry.find({ fraccId, residencia });
-    
-    res.json({
-      totalDevices: playersEnCasa.length,
-      uniquePlayerIds: [...new Set(playersEnCasa.map(p => p.originalPlayerId || p.playerId))],
-      registeredAt: playersEnCasa.map(p => p.createdAt)
-    });
-  } catch (error) {
-    console.error("Error obteniendo estadísticas:", error);
-    res.status(500).json({ error: "Error obteniendo estadísticas" });
-  }
-});
-
-router.get("/:fraccId/:residencia", async (req, res) => {
-  try {
-    const { fraccId, residencia } = req.params;
-    const notificaciones = await Notificacion.find({ fraccId, residencia }).sort({ fecha: -1 });
-    res.status(200).json(notificaciones);
-  } catch (error) {
-    console.error("Error al obtener historial:", error);
-    res.status(500).json({ error: "Error al obtener notificaciones" });
-  }
-});
-
-router.post("/responder", async (req, res) => {
-  const { id, respuesta } = req.body;
-
-  if (!["ACEPTADO", "CANCELADO"].includes(respuesta)) {
-    return res.status(400).json({ error: "Respuesta inválida" });
-  }
-
-  try {
-    const noti = await Notificacion.findById(id);
-    if (!noti) {
-      return res.status(404).json({ error: "Notificación no encontrada" });
-    }
-
-    noti.resultado = respuesta;
-    await noti.save();
-
-    res.status(200).json({ mensaje: "Respuesta registrada correctamente" });
-  } catch (error) {
-    console.error("Error al registrar respuesta:", error);
-    res.status(500).json({ error: "Error al registrar respuesta" });
-  }
-});
-router.post('/:fraccId/notificacion/abrir-puerta', validarFraccionamiento, async (req, res) => {
-  const { residenteId, reporteId, residenteNombre } = req.body;  
-  
-  try {
-    const usuarioValido = validarUsuarioEnFraccionamiento(req.fraccionamiento, residenteId);
-    if (!usuarioValido) {
-      return res.json({ success: false, message: "Residente no autorizado en este fraccionamiento" });
-    }
-
-    await Fraccionamiento.updateOne(
-      { _id: req.params.fraccId }, 
-      { $set: { puerta: true } }
-    );
-    
-    setTimeout(async () => {
-      try {
-        await Fraccionamiento.updateOne(
-          { _id: req.params.fraccId }, 
-          { $set: { puerta: false } }
-        );
-      } catch (error) {
-        console.error('Error cerrando puerta automáticamente:', error);
-      }
-    }, 10000);
-
-    const residente = req.fraccionamiento.residencias
-      .flatMap(r => r.residentes)
-      .find(r => r._id.toString() === residenteId);
-    
-    if (residente) {
-      const numeroCasa = req.fraccionamiento.residencias
-        .find(r => r.residentes.some(res => res._id.toString() === residenteId))?.numeroCasa;
-      
-      console.log(`Actualizando reporte pendiente para casa: ${numeroCasa}`);
-      
-      const reporteActualizado = await Reporte.findOneAndUpdate(
-        { 
-          fraccId: req.params.fraccId,
-          numeroCasa: numeroCasa?.toString(),
-          estatus: 'pendiente'
-        },
-        {
-          estatus: 'aceptado',
-          autorizadoPor: residenteNombre,
-          fechaAutorizacion: new Date()
-        },
-        { 
-          new: true,
-          sort: { tiempo: -1 }
-        }
+    for (const notificacion of notificacionesExpiradas) {
+      await crearReporteDesdeNotificacion(
+        notificacion, 
+        'expirado', 
+        'Sistema',
+        notificacion.fraccId,
+        notificacion.residencia
       );
       
-      if (reporteActualizado) {
-        console.log(`Reporte ${reporteActualizado._id} actualizado a ACEPTADO`);
-        
-        const io = req.app.get('io');
-        if (io) {
-          io.emit('reporteActualizado', {
-            reporteId: reporteActualizado._id.toString(),
-            estatus: 'ACEPTADO',
-            autorizadoPor: residenteNombre || 'Usuario'
-          });
-        }
-      } else {
-        console.log(`No se encontró reporte pendiente para casa: ${numeroCasa}`);
-      }
+      console.log(`Notificación ${notificacion._id} marcada como expirada`);
     }
-    
-    res.json({ 
-      success: true, 
-      message: "Acceso concedido - Puerta abierta",
-      accion: "ACEPTADO"
-    });
-
   } catch (error) {
-    console.error('Error abriendo puerta desde notificación:', error);
-    manejarError(res, error, "Error interno del servidor");
+    console.error('Error marcando notificaciones expiradas:', error);
   }
-});
+};
 
-router.post('/:fraccId/notificacion/rechazar-acceso', validarFraccionamiento, async (req, res) => {
-  const { residenteId, reporteId, residenteNombre, motivo } = req.body;  
-  
-  try {
-    const usuarioValido = validarUsuarioEnFraccionamiento(req.fraccionamiento, residenteId);
-    if (!usuarioValido) {
-      return res.json({ success: false, message: "Residente no autorizado en este fraccionamiento" });
-    }
-
-    const residente = req.fraccionamiento.residencias
-      .flatMap(r => r.residentes)
-      .find(r => r._id.toString() === residenteId);
-    
-    if (residente) {
-      const numeroCasa = req.fraccionamiento.residencias
-        .find(r => r.residentes.some(res => res._id.toString() === residenteId))?.numeroCasa;
-      
-      console.log(`Rechazando reporte pendiente para casa: ${numeroCasa}`);
-      
-      const reporteActualizado = await Reporte.findOneAndUpdate(
-        { 
-          fraccId: req.params.fraccId,
-          numeroCasa: numeroCasa?.toString(),
-          estatus: 'pendiente'
-        },
-        {
-          estatus: 'rechazado',
-          autorizadoPor: residenteNombre,
-          fechaAutorizacion: new Date(),
-          motivoRechazo: motivo
-        },
-        { 
-          new: true,
-          sort: { tiempo: -1 }
-        }
-      );
-
-      if (reporteActualizado) {
-        console.log(`Reporte ${reporteActualizado._id} actualizado a RECHAZADO`);
-        
-        const io = req.app.get('io');
-        if (io) {
-          io.emit('reporteActualizado', {
-            reporteId: reporteActualizado._id.toString(),
-            estatus: 'RECHAZADO',
-            autorizadoPor: residenteNombre || 'Usuario'
-          });
-        }
-      } else {
-        console.log(`No se encontró reporte pendiente para casa: ${numeroCasa}`);
-      }
-    }
-
-    res.json({ 
-      success: true, 
-      message: "Acceso denegado correctamente",
-      accion: "RECHAZADO"
-    });
-
-  } catch (error) {
-    console.error('Error rechazando acceso desde notificación:', error);
-    manejarError(res, error, "Error al procesar rechazo");
-  }
-});
+setInterval(marcarNotificacionesExpiradas, 2 * 60 * 1000);
 
 router.get("/historial/:fraccId/:residencia", async (req, res) => {
   try {
     const { fraccId, residencia } = req.params;
     const { limite = 50, desde } = req.query;
-
-    console.log(`Obteniendo historial para casa ${residencia} en fraccionamiento ${fraccId}`);
 
     const filtro = {
       fraccId: fraccId,
@@ -514,19 +270,16 @@ router.get("/historial/:fraccId/:residencia", async (req, res) => {
     };
     
     if (desde) {
-      const fechaDesde = new Date(desde);
-      filtro.tiempo = { $gte: fechaDesde };
+      filtro.tiempo = { $gte: new Date(desde) };
     }
     
     const reportes = await Reporte.find(filtro)
       .sort({ tiempo: -1 })
       .limit(parseInt(limite));
     
-    console.log(`Encontrados ${reportes.length} reportes para la casa ${residencia}`);
-    
     const estadisticas = {
       total: reportes.length,
-      pendientes: reportes.filter(r => r.estatus === 'pendiente').length,
+      pendientes: 0,
       aceptados: reportes.filter(r => r.estatus === 'aceptado').length,
       rechazados: reportes.filter(r => r.estatus === 'rechazado').length,
       expirados: reportes.filter(r => r.estatus === 'expirado').length
@@ -549,51 +302,5 @@ router.get("/historial/:fraccId/:residencia", async (req, res) => {
     });
   }
 });
-
-router.get("/estadisticas/:fraccId/:residencia", async (req, res) => {
-  try {
-    const { fraccId, residencia } = req.params;
-    const { dias = 30 } = req.query;
-    
-    const fechaDesde = new Date();
-    fechaDesde.setDate(fechaDesde.getDate() - parseInt(dias));
-    
-    const estadisticas = await Reporte.aggregate([
-      {
-        $match: {
-          fraccId: fraccId,
-          numeroCasa: residencia.toString(),
-          tiempo: { $gte: fechaDesde }
-        }
-      },
-      {
-        $group: {
-          _id: "$estatus",
-          count: { $sum: 1 },
-          ultimaFecha: { $max: "$tiempo" }
-        }
-      }
-    ]);
-    
-    const totalReportes = await Reporte.countDocuments({
-      fraccId: fraccId,
-      numeroCasa: residencia.toString(),
-      tiempo: { $gte: fechaDesde }
-    });
-    
-    res.json({
-      success: true,
-      periodo: `Últimos ${dias} días`,
-      totalReportes,
-      porEstatus: estadisticas,
-      fechaConsulta: new Date()
-    });
-    
-  } catch (error) {
-    console.error("Error obteniendo estadísticas:", error);
-    res.status(500).json({ error: "Error al obtener estadísticas" });
-  }
-});
-
 
 module.exports = router;

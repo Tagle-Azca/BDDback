@@ -13,11 +13,11 @@ const reportesSchema = new mongoose.Schema({
   tiempo: { type: Date, default: Date.now }, 
   estatus: {
     type: String,
-    enum: ['pendiente', 'aceptado', 'rechazado', 'cancelado', 'expirado'],
-    default: 'pendiente'
+    enum: ['aceptado', 'rechazado', 'cancelado', 'expirado'],
+    required: true
   },
-  autorizadoPor: { type: String, default: null }, 
-  fechaAutorizacion: { type: Date, default: null } 
+  autorizadoPor: { type: String, required: true }, 
+  fechaAutorizacion: { type: Date, default: Date.now }
 });
 
 module.exports = mongoose.model("Reporte", reportesSchema, "reportes");
