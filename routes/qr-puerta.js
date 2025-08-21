@@ -48,9 +48,7 @@ router.post('/validate-qr-access', async (req, res) => {
       return res.json({ success: false, message: "El código QR no corresponde a este fraccionamiento" });
     }
 
-    if (fraccionamiento.fechaExpedicion && new Date() > fraccionamiento.fechaExpedicion) {
-      return res.json({ success: false, message: "El código QR ha expirado" });
-    }
+    
 
     res.json({ success: true, message: "QR válido" });
 
@@ -78,9 +76,6 @@ router.post('/:fraccId/abrir-puerta', async (req, res) => {
       return res.json({ success: false, errorMessage: "El código QR no corresponde a este fraccionamiento" });
     }
 
-    if (fraccionamiento.fechaExpedicion && new Date() > fraccionamiento.fechaExpedicion) {
-      return res.json({ success: false, errorMessage: "El código QR ha expirado" });
-    }
 
     if (userId) {
       const usuarioValido = validarUsuarioEnFraccionamiento(fraccionamiento, userId);
