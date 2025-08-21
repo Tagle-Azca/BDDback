@@ -356,8 +356,6 @@ router.post("/responder", async (req, res) => {
     res.status(500).json({ error: "Error al registrar respuesta" });
   }
 });
-
-
 router.post('/:fraccId/notificacion/abrir-puerta', validarFraccionamiento, async (req, res) => {
   const { residenteId, reporteId, residenteNombre } = req.body;  
   
@@ -383,8 +381,6 @@ router.post('/:fraccId/notificacion/abrir-puerta', validarFraccionamiento, async
       }
     }, 10000);
 
-    console.log('Buscando reporte pendiente para casa en fraccionamiento:', req.params.fraccId);
-    
     const residente = req.fraccionamiento.residencias
       .flatMap(r => r.residentes)
       .find(r => r._id.toString() === residenteId);
@@ -393,7 +389,7 @@ router.post('/:fraccId/notificacion/abrir-puerta', validarFraccionamiento, async
       const numeroCasa = req.fraccionamiento.residencias
         .find(r => r.residentes.some(res => res._id.toString() === residenteId))?.numeroCasa;
       
-      console.log('Número de casa encontrado:', numeroCasa);
+      console.log(`Actualizando reporte pendiente para casa: ${numeroCasa}`);
       
       const reporteActualizado = await Reporte.findOneAndUpdate(
         { 
@@ -412,9 +408,9 @@ router.post('/:fraccId/notificacion/abrir-puerta', validarFraccionamiento, async
         }
       );
       
-      console.log('Reporte actualizado:', reporteActualizado);
-      
       if (reporteActualizado) {
+        console.log(`Reporte ${reporteActualizado._id} actualizado a ACEPTADO`);
+        
         const io = req.app.get('io');
         if (io) {
           io.emit('reporteActualizado', {
@@ -424,7 +420,7 @@ router.post('/:fraccId/notificacion/abrir-puerta', validarFraccionamiento, async
           });
         }
       } else {
-        console.log('No se encontró reporte pendiente para la casa:', numeroCasa);
+        console.log(`No se encontró reporte pendiente para casa: ${numeroCasa}`);
       }
     }
     
@@ -449,25 +445,47 @@ router.post('/:fraccId/notificacion/rechazar-acceso', validarFraccionamiento, as
       return res.json({ success: false, message: "Residente no autorizado en este fraccionamiento" });
     }
 
-    if (reporteId) {
-      console.log('Rechazando reporte:', reporteId); 
+    const residente = req.fraccionamiento.residencias
+      .flatMap(r => r.residentes)
+      .find(r => r._id.toString() === residenteId);
+    
+    if (residente) {
+      const numeroCasa = req.fraccionamiento.residencias
+        .find(r => r.residentes.some(res => res._id.toString() === residenteId))?.numeroCasa;
       
-      const reporteActualizado = await Reporte.findByIdAndUpdate(reporteId, {
-        estatus: 'rechazado',
-        autorizadoPor: residenteNombre,
-        fechaAutorizacion: new Date(),
-        motivoRechazo: motivo
-      }, { new: true });
+      console.log(`Rechazando reporte pendiente para casa: ${numeroCasa}`);
+      
+      const reporteActualizado = await Reporte.findOneAndUpdate(
+        { 
+          fraccId: req.params.fraccId,
+          numeroCasa: numeroCasa?.toString(),
+          estatus: 'pendiente'
+        },
+        {
+          estatus: 'rechazado',
+          autorizadoPor: residenteNombre,
+          fechaAutorizacion: new Date(),
+          motivoRechazo: motivo
+        },
+        { 
+          new: true,
+          sort: { tiempo: -1 }
+        }
+      );
 
-      console.log('Reporte rechazado:', reporteActualizado);
-
-      const io = req.app.get('io');
-      if (io) {
-        io.emit('reporteActualizado', {
-          reporteId: reporteId,
-          estatus: 'RECHAZADO',
-          autorizadoPor: residenteNombre || 'Usuario'
-        });
+      if (reporteActualizado) {
+        console.log(`Reporte ${reporteActualizado._id} actualizado a RECHAZADO`);
+        
+        const io = req.app.get('io');
+        if (io) {
+          io.emit('reporteActualizado', {
+            reporteId: reporteActualizado._id.toString(),
+            estatus: 'RECHAZADO',
+            autorizadoPor: residenteNombre || 'Usuario'
+          });
+        }
+      } else {
+        console.log(`No se encontró reporte pendiente para casa: ${numeroCasa}`);
       }
     }
 
