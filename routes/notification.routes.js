@@ -383,25 +383,46 @@ router.post('/:fraccId/notificacion/abrir-puerta', validarFraccionamiento, async
       }
     }, 10000);
 
-    // Actualizar el reporte con el ID correcto
     if (reporteId) {
-      console.log('Actualizando reporte:', reporteId); // Debug
+      console.log('Buscando notificación con ID:', reporteId);
       
-      const reporteActualizado = await Reporte.findByIdAndUpdate(reporteId, {
-        estatus: 'aceptado',
-        autorizadoPor: residenteNombre,
-        fechaAutorizacion: new Date()
-      }, { new: true });
+      const notificacion = await Notificacion.findById(reporteId);
       
-      console.log('Reporte actualizado:', reporteActualizado); // Debug
-      
-      const io = req.app.get('io');
-      if (io) {
-        io.emit('reporteActualizado', {
-          reporteId: reporteId,
-          estatus: 'ACEPTADO',
-          autorizadoPor: residenteNombre || 'Usuario'
-        });
+      if (notificacion) {
+        console.log('Notificación encontrada, buscando reporte relacionado...');
+        
+        const reporteActualizado = await Reporte.findOneAndUpdate(
+          { 
+            fraccId: notificacion.fraccId,
+            numeroCasa: notificacion.residencia,
+            nombre: notificacion.titulo, 
+            tiempo: notificacion.fecha,  
+            estatus: 'pendiente'
+          },
+          {
+            estatus: 'aceptado',
+            autorizadoPor: residenteNombre,
+            fechaAutorizacion: new Date()
+          }, 
+          { new: true }
+        );
+        
+        console.log('Reporte actualizado:', reporteActualizado);
+        
+        if (reporteActualizado) {
+          const io = req.app.get('io');
+          if (io) {
+            io.emit('reporteActualizado', {
+              reporteId: reporteActualizado._id.toString(), 
+              estatus: 'ACEPTADO',
+              autorizadoPor: residenteNombre || 'Usuario'
+            });
+          }
+        } else {
+          console.log('No se encontró reporte correspondiente a la notificación');
+        }
+      } else {
+        console.log('No se encontró la notificación con ID:', reporteId);
       }
     }
     

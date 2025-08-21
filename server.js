@@ -109,6 +109,8 @@ app.use("/api/residencias", residenciasRoutes);
 app.use("/api/reportes", reportesRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/qr-puerta", qrPuertaRoutes);
+
+
 const PORT = process.env.PORT || 5002;
 
 server.listen(PORT, "0.0.0.0", () => {

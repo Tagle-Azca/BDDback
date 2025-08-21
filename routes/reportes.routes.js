@@ -185,28 +185,24 @@ router.get("/historial/:fraccId/:residencia", async (req, res) => {
     const { fraccId, residencia } = req.params;
     const { limite = 50, desde } = req.query;
     
-    console.log(`📊 Obteniendo historial para casa ${residencia} en fraccionamiento ${fraccId}`);
+    console.log(`Obteniendo historial para casa ${residencia} en fraccionamiento ${fraccId}`);
     
-    // Filtro base
     const filtro = {
       fraccId: fraccId,
       numeroCasa: residencia.toString()
     };
     
-    // Filtro por fecha si se especifica
     if (desde) {
       const fechaDesde = new Date(desde);
       filtro.tiempo = { $gte: fechaDesde };
     }
     
-    // Obtener reportes ordenados por fecha (más recientes primero)
     const reportes = await Reporte.find(filtro)
       .sort({ tiempo: -1 })
       .limit(parseInt(limite));
     
     console.log(`✅ Encontrados ${reportes.length} reportes para la casa ${residencia}`);
     
-    // Estadísticas rápidas
     const estadisticas = {
       total: reportes.length,
       pendientes: reportes.filter(r => r.estatus === 'pendiente').length,
@@ -225,7 +221,7 @@ router.get("/historial/:fraccId/:residencia", async (req, res) => {
     });
     
   } catch (error) {
-    console.error("❌ Error obteniendo historial de casa:", error);
+    console.error("Error obteniendo historial de casa:", error);
     res.status(500).json({ 
       error: "Error al obtener historial de reportes",
       details: error.message 
@@ -233,7 +229,6 @@ router.get("/historial/:fraccId/:residencia", async (req, res) => {
   }
 });
 
-// TAMBIÉN agregar endpoint para estadísticas rápidas
 router.get("/estadisticas/:fraccId/:residencia", async (req, res) => {
   try {
     const { fraccId, residencia } = req.params;
