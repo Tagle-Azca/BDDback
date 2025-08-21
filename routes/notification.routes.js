@@ -3,7 +3,7 @@ const router = express.Router();
 const fetch = require("node-fetch");
 const Reporte = require("../models/Reportes");
 const Notificacion = require("../models/Notification");
-const PlayerRegistry = require("../models/playerRegistry");
+const PlayerRegistry = require("../models/PlayerRegistry");
 const Fraccionamiento = require("../models/fraccionamiento");
 
 const validarFraccionamiento = async (req, res, next) => {
