@@ -96,22 +96,10 @@ router.post("/send-notification", async (req, res) => {
       });
     }
 
+    // SIMPLIFICADO: Solo extraer los playerIds únicos
     const playerIds = [...new Set(playersEnCasa
-      .map(player => {
-        if (player.originalPlayerId && player.originalPlayerId.length === 36) {
-          return player.originalPlayerId;
-        }
-        
-        if (player.playerId && player.playerId.includes('_')) {
-          const uuidPart = player.playerId.split('_')[0];
-          if (uuidPart.length === 36 && uuidPart.includes('-')) {
-            return uuidPart;
-          }
-        }
-        
-        return null;
-      })
-      .filter(id => id && id.length === 36))];
+      .map(player => player.playerId)
+      .filter(id => id && id.trim() !== ''))];
 
     if (playerIds.length === 0) {
       return res.status(400).json({ 
@@ -170,27 +158,18 @@ router.post("/register", async (req, res) => {
       return res.status(400).json({ error: "Player ID es requerido" });
     }
     
-    const uniqueId = `${playerId}_${residencia}_${Date.now()}`;
-    
-    const existing = await PlayerRegistry.findOne({ 
-      originalPlayerId: playerId, 
+    await PlayerRegistry.deleteMany({ 
+      playerId: playerId, 
       fraccId, 
-      residencia 
+      residencia: residencia.toString()
     });
     
-    if (!existing) {
-      await PlayerRegistry.create({
-        playerId: uniqueId,                    
-        originalPlayerId: playerId,           
-        fraccId: fraccId,
-        residencia: residencia.toString(),   
-        createdAt: new Date()
-      });
-    } else {
-      existing.playerId = uniqueId;  
-      existing.createdAt = new Date();
-      await existing.save();
-    }
+    await PlayerRegistry.create({
+      playerId: playerId,                    
+      fraccId: fraccId,
+      residencia: residencia.toString(),   
+      createdAt: new Date()
+    });
     
     res.json({ 
       success: true, 
@@ -214,19 +193,15 @@ router.get("/devices/:fraccId/:residencia", async (req, res) => {
     
     const devices = playersRegistry.map(p => ({
       playerId: p.playerId,
-      originalPlayerId: p.originalPlayerId,
       createdAt: p.createdAt
     }));
-    
-    const uniquePlayerIds = [...new Set(playersRegistry.map(p => p.originalPlayerId || p.playerId))];
     
     res.json({
       casa: residencia,
       fraccionamiento: fraccId,
       totalDevices: devices.length,
-      uniqueDevices: uniquePlayerIds.length,
       devices: devices,
-      uniquePlayerIds: uniquePlayerIds
+      playerIds: devices.map(d => d.playerId)
     });
     
   } catch (error) {
