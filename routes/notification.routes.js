@@ -460,5 +460,99 @@ router.post('/:fraccId/notificacion/rechazar-acceso', validarFraccionamiento, as
   }
 });
 
+router.get("/historial/:fraccId/:residencia", async (req, res) => {
+  try {
+    const { fraccId, residencia } = req.params;
+    const { limite = 50, desde } = req.query;
+
+    console.log(`Obteniendo historial para casa ${residencia} en fraccionamiento ${fraccId}`);
+
+    const filtro = {
+      fraccId: fraccId,
+      numeroCasa: residencia.toString()
+    };
+    
+    if (desde) {
+      const fechaDesde = new Date(desde);
+      filtro.tiempo = { $gte: fechaDesde };
+    }
+    
+    const reportes = await Reporte.find(filtro)
+      .sort({ tiempo: -1 })
+      .limit(parseInt(limite));
+    
+    console.log(`Encontrados ${reportes.length} reportes para la casa ${residencia}`);
+    
+    const estadisticas = {
+      total: reportes.length,
+      pendientes: reportes.filter(r => r.estatus === 'pendiente').length,
+      aceptados: reportes.filter(r => r.estatus === 'aceptado').length,
+      rechazados: reportes.filter(r => r.estatus === 'rechazado').length,
+      expirados: reportes.filter(r => r.estatus === 'expirado').length
+    };
+    
+    res.json({
+      success: true,
+      casa: residencia,
+      fraccionamiento: fraccId,
+      reportes: reportes,
+      estadisticas: estadisticas,
+      total: reportes.length
+    });
+    
+  } catch (error) {
+    console.error("Error obteniendo historial de casa:", error);
+    res.status(500).json({ 
+      error: "Error al obtener historial de reportes",
+      details: error.message 
+    });
+  }
+});
+
+router.get("/estadisticas/:fraccId/:residencia", async (req, res) => {
+  try {
+    const { fraccId, residencia } = req.params;
+    const { dias = 30 } = req.query;
+    
+    const fechaDesde = new Date();
+    fechaDesde.setDate(fechaDesde.getDate() - parseInt(dias));
+    
+    const estadisticas = await Reporte.aggregate([
+      {
+        $match: {
+          fraccId: fraccId,
+          numeroCasa: residencia.toString(),
+          tiempo: { $gte: fechaDesde }
+        }
+      },
+      {
+        $group: {
+          _id: "$estatus",
+          count: { $sum: 1 },
+          ultimaFecha: { $max: "$tiempo" }
+        }
+      }
+    ]);
+    
+    const totalReportes = await Reporte.countDocuments({
+      fraccId: fraccId,
+      numeroCasa: residencia.toString(),
+      tiempo: { $gte: fechaDesde }
+    });
+    
+    res.json({
+      success: true,
+      periodo: `Últimos ${dias} días`,
+      totalReportes,
+      porEstatus: estadisticas,
+      fechaConsulta: new Date()
+    });
+    
+  } catch (error) {
+    console.error("Error obteniendo estadísticas:", error);
+    res.status(500).json({ error: "Error al obtener estadísticas" });
+  }
+});
+
 
 module.exports = router;
