@@ -54,6 +54,32 @@ const buscarNotificacionPendiente = async (fraccId, numeroCasa) => {
   return notificacion;
 };
 
+const crearReporteUnico = async (notificacion, estatus, autorizadoPor) => {
+  const reporteExistente = await Reporte.findOne({
+    fraccId: notificacion.fraccId,
+    numeroCasa: notificacion.residencia,
+    nombre: notificacion.title,
+    tiempo: notificacion.fecha
+  });
+  if (reporteExistente) {
+    console.log(`Ya existe reporte para esta notificación: ${reporteExistente._id}`);
+    return reporteExistente;
+  }
+
+  const nuevoReporte = new Reporte({
+    fraccId: notificacion.fraccId,
+    numeroCasa: notificacion.residencia,
+    nombre: notificacion.title,
+    motivo: notificacion.body,
+    foto: notificacion.foto,
+    tiempo: notificacion.fecha,
+    estatus: estatus,
+    autorizadoPor: autorizadoPor
+  });
+
+  return await nuevoReporte.save();
+};
+
 router.post("/send-notification", async (req, res) => {
   try {
     const { title, body, fraccId, residencia, foto, reporteId } = req.body;
@@ -268,18 +294,7 @@ router.post('/:fraccId/notificacion/abrir-puerta', validarFraccionamiento, async
         console.log(`Encontrada notificación: ${notificacion._id}`);
         console.log(`Guardando reporte ACEPTADO para casa: ${numeroCasa}`);
         
-        const nuevoReporte = new Reporte({
-          fraccId: req.params.fraccId,
-          numeroCasa: numeroCasa?.toString(),
-          nombre: notificacion.title,
-          motivo: notificacion.body,
-          foto: notificacion.foto,
-          tiempo: notificacion.fecha,
-          estatus: 'aceptado',
-          autorizadoPor: residenteNombre
-        });
-
-        const reporteGuardado = await nuevoReporte.save();
+        const reporteGuardado = await crearReporteUnico(notificacion, 'aceptado', residenteNombre);
         console.log(`Reporte ${reporteGuardado._id} guardado como ACEPTADO`);
 
         await Notificacion.findByIdAndUpdate(notificacion._id, { respondida: true });
@@ -334,18 +349,7 @@ router.post('/:fraccId/notificacion/rechazar-acceso', validarFraccionamiento, as
         console.log(`Encontrada notificación: ${notificacion._id}`);
         console.log(`Guardando reporte RECHAZADO para casa: ${numeroCasa}`);
         
-        const nuevoReporte = new Reporte({
-          fraccId: req.params.fraccId,
-          numeroCasa: numeroCasa?.toString(),
-          nombre: notificacion.title,
-          motivo: notificacion.body,
-          foto: notificacion.foto,
-          tiempo: notificacion.fecha,
-          estatus: 'rechazado',
-          autorizadoPor: residenteNombre
-        });
-
-        const reporteGuardado = await nuevoReporte.save();
+        const reporteGuardado = await crearReporteUnico(notificacion, 'rechazado', residenteNombre);
         console.log(`Reporte ${reporteGuardado._id} guardado como RECHAZADO`);
 
         await Notificacion.findByIdAndUpdate(notificacion._id, { respondida: true });
@@ -388,21 +392,21 @@ const marcarNotificacionesExpiradas = async () => {
     });
 
     for (const notificacion of notificacionesExpiradas) {
-      const nuevoReporte = new Reporte({
+      const reporteExistente = await Reporte.findOne({
         fraccId: notificacion.fraccId,
         numeroCasa: notificacion.residencia,
         nombre: notificacion.title,
-        motivo: notificacion.body,
-        foto: notificacion.foto,
-        tiempo: notificacion.fecha,
-        estatus: 'expirado',
-        autorizadoPor: 'Sistema'
+        tiempo: notificacion.fecha
       });
 
-      await nuevoReporte.save();
+      if (!reporteExistente) {
+        await crearReporteUnico(notificacion, 'expirado', 'Sistema');
+        console.log(`Notificación ${notificacion._id} marcada como expirada`);
+      } else {
+        console.log(`Notificación ${notificacion._id} ya tiene reporte, solo marcando como respondida`);
+      }
+
       await Notificacion.findByIdAndUpdate(notificacion._id, { respondida: true });
-      
-      console.log(`Notificación ${notificacion._id} marcada como expirada`);
     }
   } catch (error) {
     console.error('Error marcando notificaciones expiradas:', error);
@@ -450,6 +454,26 @@ router.get("/historial/:fraccId/:residencia", async (req, res) => {
       error: "Error al obtener historial de reportes",
       details: error.message 
     });
+  }
+});
+
+router.get("/reportes/:fraccId", async (req, res) => {
+  try {
+    const { fraccId } = req.params;
+    const { desde, hasta, casa } = req.query;
+    
+    const filtro = { fraccId: fraccId };
+    
+    if (casa) filtro.numeroCasa = casa;
+    if (desde) filtro.tiempo = { $gte: new Date(desde) };
+    if (hasta) filtro.tiempo = { ...filtro.tiempo, $lte: new Date(hasta) };
+    
+    const reportes = await Reporte.find(filtro).sort({ tiempo: -1 });
+    res.json(reportes);
+    
+  } catch (error) {
+    console.error("Error obteniendo reportes del fraccionamiento:", error);
+    res.status(500).json({ error: error.message });
   }
 });
 
