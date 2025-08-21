@@ -4,7 +4,6 @@ const path = require("path");
 const fs = require("fs");
 const fetch = require("node-fetch");
 const Fraccionamiento = require("../models/fraccionamiento");
-const Reporte = require("../models/Reportes");
 const { v4: uuidv4 } = require("uuid");
 const bcrypt = require("bcrypt");
 const cloudinary = require("../config/cloudinary");
@@ -79,16 +78,6 @@ const validarCasa = (req, res, next) => {
   next();
 };
 
-const validarUsuarioEnFraccionamiento = (fraccionamiento, residenteId) => {
-  for (const residencia of fraccionamiento.residencias) {
-    const residente = residencia.residentes.find(r => 
-      r._id.toString() === residenteId && r.activo === true
-    );
-    if (residente) return true;
-  }
-  return false;
-};
-
 router.post("/", async (req, res) => {
   try {
     const hashedPassword = await bcrypt.hash(req.body.contrasena, 10);
@@ -129,86 +118,6 @@ router.get("/", async (req, res) => {
 
 router.get("/:fraccId", validarFraccionamiento, (req, res) => {
   res.status(200).json(req.fraccionamiento);
-});
-
-router.put("/Update/:fraccId", validarFraccionamiento, async (req, res) => {
-  const { regenerarQR, ...nuevosDatos } = req.body;
-
-  try {
-    if (regenerarQR) {
-      const qrLinks = generarQRLinks(req.fraccionamiento._id);
-      nuevosDatos.qrVisitas = qrLinks.qrAcceso;
-      nuevosDatos.fechaGenerada = new Date();
-      const nuevaExp = new Date();
-      nuevaExp.setFullYear(nuevaExp.getFullYear() + 1);
-      nuevosDatos.fechaExpedicion = nuevaExp;
-    }
-
-    const actualizado = await Fraccionamiento.findByIdAndUpdate(
-      req.params.fraccId,
-      nuevosDatos,
-      { new: true }
-    );
-
-    res.status(200).json({
-      mensaje: "Fraccionamiento actualizado correctamente",
-      data: actualizado,
-      qr: { link: actualizado.qrVisitas },
-    });
-  } catch (error) {
-    manejarError(res, error, "Error al actualizar fraccionamiento");
-  }
-});
-
-router.get("/:fraccId/qr-codes", validarFraccionamiento, (req, res) => {
-  const qrLinks = generarQRLinks(req.params.fraccId);
-  
-  const qrCasas = req.fraccionamiento.residencias.map(casa => ({
-    numeroCasa: casa.numero,
-    qrResidente: generarQRLinks(req.params.fraccId, casa.numero).qrResidente
-  }));
-  
-  res.status(200).json({
-    fraccionamiento: {
-      nombre: req.fraccionamiento.nombre,
-      qrAcceso: qrLinks.qrAcceso,
-      qrVisitantes: qrLinks.qrVisitantes,
-      qrAdmin: qrLinks.qrAdmin
-    },
-    casas: qrCasas
-  });
-});
-
-router.post("/:fraccId/regenerar-qr", validarFraccionamiento, async (req, res) => {
-  const { tipo } = req.body;
-  
-  try {
-    const qrLinks = generarQRLinks(req.params.fraccId);
-    const resultado = {};
-    
-    if (tipo === 'all' || tipo === 'acceso') {
-      req.fraccionamiento.qrVisitas = qrLinks.qrAcceso;
-      resultado.qrAcceso = qrLinks.qrAcceso;
-    }
-    
-    if (tipo === 'all' || tipo === 'visitantes') {
-      resultado.qrVisitantes = qrLinks.qrVisitantes;
-    }
-    
-    if (tipo === 'all' || tipo === 'admin') {
-      resultado.qrAdmin = qrLinks.qrAdmin;
-    }
-    
-    req.fraccionamiento.fechaGenerada = new Date();
-    await req.fraccionamiento.save();
-    
-    res.status(200).json({
-      mensaje: "QR regenerados correctamente",
-      qr: resultado
-    });
-  } catch (error) {
-    manejarError(res, error, "Error al regenerar QRs");
-  }
 });
 
 router.post("/:fraccId/casas", validarFraccionamiento, async (req, res) => {
@@ -338,7 +247,6 @@ router.post("/:fraccId/casas/:numero/visitas",
 
       const fotoUrl = await subirImagenCloudinary(req.file?.path);
 
-
       if (!req.casa.visitas) req.casa.visitas = [];
       req.casa.visitas.push({
         nombreVisitante,
@@ -355,7 +263,7 @@ router.post("/:fraccId/casas/:numero/visitas",
         req.params.fraccId,
         req.params.numero,
         fotoUrl,
-        null // Sin reporteId
+        null
       );
 
       res.status(201).json({ mensaje: "Visita registrada con éxito", foto: fotoUrl });
@@ -364,13 +272,6 @@ router.post("/:fraccId/casas/:numero/visitas",
     }
   }
 );
-
-router.get("/:fraccId/casas/:numero/visitas", validarFraccionamiento, validarCasa, (req, res) => {
-  if (!req.casa.activa) {
-    return res.status(403).json({ error: "La casa está desactivada y no puede recibir visitas." });
-  }
-  res.status(200).json({ visitas: req.casa.visitas || [] });
-});
 
 router.post("/login", async (req, res) => {
   const { usuario, contrasena } = req.body;
@@ -395,22 +296,6 @@ router.post("/login", async (req, res) => {
     });
   } catch (error) {
     manejarError(res, error, "Error del servidor al iniciar sesión");
-  }
-});
-
-
-router.post('/:fraccId/rechazar-puerta', async (req, res) => {
-  const { userId } = req.body;
-  
-  try {
-    const fraccionamiento = await buscarFraccionamiento(req.params.fraccId);
-    if (!fraccionamiento) {
-      return res.json({ success: false, errorMessage: "Fraccionamiento no encontrado" });
-    }
-
-    res.json({ success: true, message: "Rechazo de apertura registrado correctamente" });
-  } catch (error) {
-    res.json({ success: false, errorMessage: "Error al rechazar puerta" });
   }
 });
 
