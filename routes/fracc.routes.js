@@ -338,14 +338,6 @@ router.post("/:fraccId/casas/:numero/visitas",
 
       const fotoUrl = await subirImagenCloudinary(req.file?.path);
 
-      const reporteCreado = await Reporte.create({
-        fraccId: req.params.fraccId,
-        numeroCasa: req.params.numero,
-        nombre: nombreVisitante,
-        motivo,
-        foto: fotoUrl,
-        tiempo: new Date(),
-      });
 
       if (!req.casa.visitas) req.casa.visitas = [];
       req.casa.visitas.push({
@@ -363,7 +355,7 @@ router.post("/:fraccId/casas/:numero/visitas",
         req.params.fraccId,
         req.params.numero,
         fotoUrl,
-        reporteCreado._id.toString()
+        null // Sin reporteId
       );
 
       res.status(201).json({ mensaje: "Visita registrada con éxito", foto: fotoUrl });
@@ -406,54 +398,6 @@ router.post("/login", async (req, res) => {
   }
 });
 
-
-router.post('/:fraccId/abrir-puerta', async (req, res) => {
-  const { userId, qrCode } = req.body;
-  
-  try {
-    const fraccionamiento = await buscarFraccionamiento(req.params.fraccId);
-    if (!fraccionamiento) {
-      return res.json({ success: false, errorMessage: "Fraccionamiento no encontrado" });
-    }
-
-    if (!qrCode) {
-      return res.json({ success: false, errorMessage: "Código QR es requerido" });
-    }
-
-    const qrFraccId = extraerFraccIdDelQR(qrCode);
-    if (!qrFraccId || qrFraccId !== req.params.fraccId) {
-      return res.json({ success: false, errorMessage: "El código QR no corresponde a este fraccionamiento" });
-    }
-
-    if (fraccionamiento.fechaExpedicion && new Date() > fraccionamiento.fechaExpedicion) {
-      return res.json({ success: false, errorMessage: "El código QR ha expirado" });
-    }
-
-    if (userId) {
-      const usuarioValido = validarUsuarioEnFraccionamiento(fraccionamiento, userId);
-      if (!usuarioValido) {
-        return res.json({ success: false, errorMessage: "Usuario no autorizado en este fraccionamiento" });
-      }
-    }
-
-    await Fraccionamiento.updateOne(
-      { _id: req.params.fraccId }, 
-      { $set: { puerta: true } }
-    );
-    
-    setTimeout(async () => {
-      await Fraccionamiento.updateOne(
-        { _id: req.params.fraccId }, 
-        { $set: { puerta: false } }
-      );
-    }, 10000);
-    
-    res.json({ success: true, message: "Portón abierto correctamente" });
-
-  } catch (error) {
-    res.json({ success: false, errorMessage: "Error interno del servidor" });
-  }
-});
 
 router.post('/:fraccId/rechazar-puerta', async (req, res) => {
   const { userId } = req.body;
