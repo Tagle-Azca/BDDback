@@ -61,6 +61,7 @@ const crearReporteUnico = async (notificacion, estatus, autorizadoPor) => {
     nombre: notificacion.title,
     tiempo: notificacion.fecha
   });
+
   if (reporteExistente) {
     console.log(`Ya existe reporte para esta notificación: ${reporteExistente._id}`);
     return reporteExistente;
@@ -284,7 +285,7 @@ router.post('/:fraccId/notificacion/abrir-puerta', validarFraccionamiento, async
     
     if (residente) {
       const numeroCasa = req.fraccionamiento.residencias
-        .find(r => r.residentes.some(res => res._id.toString() === residenteId))?.numeroCasa;
+        .find(r => r.residentes.some(res => res._id.toString() === residenteId))?.numero;
       
       console.log(`Buscando notificación pendiente para casa: ${numeroCasa}`);
       
@@ -339,7 +340,7 @@ router.post('/:fraccId/notificacion/rechazar-acceso', validarFraccionamiento, as
     
     if (residente) {
       const numeroCasa = req.fraccionamiento.residencias
-        .find(r => r.residentes.some(res => res._id.toString() === residenteId))?.numeroCasa;
+        .find(r => r.residentes.some(res => res._id.toString() === residenteId))?.numero;
       
       console.log(`Buscando notificación pendiente para casa: ${numeroCasa}`);
       

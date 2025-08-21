@@ -23,8 +23,8 @@ router.get('/:fraccId/reportes', async (req, res) => {
   haceTresMeses.setMonth(hoy.getMonth() - 3);
 
   const filtro = {
-  fraccId: new mongoose.Types.ObjectId(fraccId),
-};
+    fraccId: new mongoose.Types.ObjectId(fraccId),
+  };
 
   if (casa) {
     filtro.numeroCasa = casa;
@@ -50,39 +50,38 @@ router.get('/:fraccId/reportes', async (req, res) => {
 });
 
 router.put('/reportes/:id/autorizar', async (req, res) => {
-    try {
-      const { residenteId, estatus } = req.body;
-  
-      const estatusFormateado = estatus?.toUpperCase();
-      if (!['ACEPTADO', 'RECHAZADO', 'IGNORADO'].includes(estatusFormateado)) {
-        return res.status(400).json({ error: 'Estatus inválido' });
-      }
-  
+  try {
+    const { residenteId, estatus } = req.body;
 
-      const residencia = await Residencias.findOne({ "residentes.residenteId": residenteId });
-  
-      if (!residencia) {
-        return res.status(404).json({ error: 'Residente no encontrado' });
-      }
-  
-      const residente = residencia.residentes.find(r => r.residenteId === residenteId);
-  
-      const reporte = await Reporte.findByIdAndUpdate(
-        req.params.id,
-        {
-          estatus: estatusFormateado,
-          autorizadoPor: residenteId,
-          nombreAutorizador: residente.nombre
-        },
-        { new: true }
-      );
-  
-      res.json(reporte);
-    } catch (err) {
-      console.error(err);
-      res.status(500).json({ error: 'Error al actualizar el reporte' });
+    const estatusFormateado = estatus?.toUpperCase();
+    if (!['ACEPTADO', 'RECHAZADO', 'IGNORADO'].includes(estatusFormateado)) {
+      return res.status(400).json({ error: 'Estatus inválido' });
     }
-  });
+
+    const residencia = await Residencias.findOne({ "residentes.residenteId": residenteId });
+
+    if (!residencia) {
+      return res.status(404).json({ error: 'Residente no encontrado' });
+    }
+
+    const residente = residencia.residentes.find(r => r.residenteId === residenteId);
+
+    const reporte = await Reporte.findByIdAndUpdate(
+      req.params.id,
+      {
+        estatus: estatusFormateado,
+        autorizadoPor: residenteId,
+        nombreAutorizador: residente.nombre
+      },
+      { new: true }
+    );
+
+    res.json(reporte);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error al actualizar el reporte' });
+  }
+});
 
 router.put("/:fraccId", async (req, res) => {
   const { fraccId } = req.params;
@@ -111,7 +110,7 @@ router.put("/:fraccId", async (req, res) => {
     res.status(500).json({ error: "Error interno del servidor" });
   }
 });
-// ✅ MODIFICADO: Endpoint con WebSocket
+
 router.put('/actualizarReporte', async (req, res) => {
   try {
     const { resultado, idReporte, userId } = req.body;
@@ -126,20 +125,17 @@ router.put('/actualizarReporte', async (req, res) => {
       return res.status(400).json({ error: 'ID de reporte requerido' });
     }
 
-    // Buscar el reporte
     const reporte = await Reporte.findById(idReporte);
     if (!reporte) {
       return res.status(404).json({ error: 'Reporte no encontrado' });
     }
 
-    // Mapear resultado a estatus del modelo
     const estatusMap = {
       'ACEPTADO': 'aceptado',
       'RECHAZADO': 'rechazado', 
       'CANCELADO': 'cancelado'
     };
 
-    // Actualizar reporte
     const estatusAnterior = reporte.estatus;
     reporte.estatus = estatusMap[resultado];
     reporte.autorizadoPor = userId || 'app-user';
@@ -147,9 +143,8 @@ router.put('/actualizarReporte', async (req, res) => {
     
     await reporte.save();
 
-    console.log(`✅ Reporte ${idReporte} actualizado: ${reporte.estatus} por ${reporte.nombreAutorizador}`);
+    console.log(`Reporte ${idReporte} actualizado: ${reporte.estatus} por ${reporte.nombreAutorizador}`);
     
-    // 🚀 NUEVO: Emitir a todos los usuarios de la casa
     if (global.emitToHouse) {
       global.emitToHouse(reporte.numeroCasa, reporte.fraccId.toString(), 'reporteActualizado', {
         reporteId: idReporte,
@@ -169,108 +164,11 @@ router.put('/actualizarReporte', async (req, res) => {
     });
 
   } catch (error) {
-    console.error("❌ Error actualizando reporte:", error);
+    console.error("Error actualizando reporte:", error);
     res.status(500).json({ error: 'Error al actualizar el reporte' });
   }
 });
-module.exports = router;
 
 router.get('/reportes/pendiente/:fraccId/:numeroCasa', obtenerPendientePorCasa);
 
-
-
-
-router.get("/historial/:fraccId/:residencia", async (req, res) => {
-  try {
-    const { fraccId, residencia } = req.params;
-    const { limite = 50, desde } = req.query;
-    
-    console.log(`Obteniendo historial para casa ${residencia} en fraccionamiento ${fraccId}`);
-    
-    const filtro = {
-      fraccId: fraccId,
-      numeroCasa: residencia.toString()
-    };
-    
-    if (desde) {
-      const fechaDesde = new Date(desde);
-      filtro.tiempo = { $gte: fechaDesde };
-    }
-    
-    const reportes = await Reporte.find(filtro)
-      .sort({ tiempo: -1 })
-      .limit(parseInt(limite));
-    
-    console.log(`✅ Encontrados ${reportes.length} reportes para la casa ${residencia}`);
-    
-    const estadisticas = {
-      total: reportes.length,
-      pendientes: reportes.filter(r => r.estatus === 'pendiente').length,
-      aceptados: reportes.filter(r => r.estatus === 'aceptado').length,
-      rechazados: reportes.filter(r => r.estatus === 'rechazado').length,
-      expirados: reportes.filter(r => r.estatus === 'expirado').length
-    };
-    
-    res.json({
-      success: true,
-      casa: residencia,
-      fraccionamiento: fraccId,
-      reportes: reportes,
-      estadisticas: estadisticas,
-      total: reportes.length
-    });
-    
-  } catch (error) {
-    console.error("Error obteniendo historial de casa:", error);
-    res.status(500).json({ 
-      error: "Error al obtener historial de reportes",
-      details: error.message 
-    });
-  }
-});
-
-router.get("/estadisticas/:fraccId/:residencia", async (req, res) => {
-  try {
-    const { fraccId, residencia } = req.params;
-    const { dias = 30 } = req.query;
-    
-    const fechaDesde = new Date();
-    fechaDesde.setDate(fechaDesde.getDate() - parseInt(dias));
-    
-    const estadisticas = await Reporte.aggregate([
-      {
-        $match: {
-          fraccId: new mongoose.Types.ObjectId(fraccId),
-          numeroCasa: residencia.toString(),
-          tiempo: { $gte: fechaDesde }
-        }
-      },
-      {
-        $group: {
-          _id: "$estatus",
-          count: { $sum: 1 },
-          ultimaFecha: { $max: "$tiempo" }
-        }
-      }
-    ]);
-    
-    const totalReportes = await Reporte.countDocuments({
-      fraccId: fraccId,
-      numeroCasa: residencia.toString(),
-      tiempo: { $gte: fechaDesde }
-    });
-    
-    res.json({
-      success: true,
-      periodo: `Últimos ${dias} días`,
-      totalReportes,
-      porEstatus: estadisticas,
-      fechaConsulta: new Date()
-    });
-    
-  } catch (error) {
-    console.error("❌ Error obteniendo estadísticas:", error);
-    res.status(500).json({ error: "Error al obtener estadísticas" });
-  }
-});
 module.exports = router;
