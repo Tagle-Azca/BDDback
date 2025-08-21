@@ -42,10 +42,15 @@ const manejarError = (res, error, mensaje = "Error interno del servidor", status
 };
 
 
+// REEMPLAZAR el endpoint send-notification en tu backend de notificaciones:
 
 router.post("/send-notification", async (req, res) => {
   try {
-    const { title, body, fraccId, residencia, foto } = req.body;
+    const { title, body, fraccId, residencia, foto, reporteId } = req.body; // ⭐ AGREGAR reporteId
+
+    console.log('=== DEBUG SEND NOTIFICATION ===');
+    console.log('reporteId recibido:', reporteId);
+    console.log('===============================');
 
     const playersEnCasa = await PlayerRegistry.find({ 
       fraccId: fraccId, 
@@ -87,8 +92,20 @@ router.post("/send-notification", async (req, res) => {
       headings: { en: title },
       contents: { en: body },
       big_picture: foto,
-      data: { fraccId, residencia, foto, nombre: title, motivo: body, tipo: 'solicitud_acceso' }
+      data: { 
+        fraccId, 
+        residencia, 
+        foto, 
+        nombre: title, 
+        motivo: body, 
+        tipo: 'solicitud_acceso',
+        reporteId: reporteId  
+      }
     };
+
+    console.log('=== PAYLOAD ONESIGNAL ===');
+    console.log('reporteId en payload:', payload.data.reporteId);
+    console.log('========================');
 
     const response = await fetch("https://onesignal.com/api/v1/notifications", {
       method: "POST",
@@ -107,6 +124,7 @@ router.post("/send-notification", async (req, res) => {
       mensaje: "Notificación enviada", 
       dispositivos: playerIds.length,
       playerIds: playerIds,
+      reporteId: reporteId, 
       resultado 
     });
 
@@ -340,9 +358,8 @@ router.post("/responder", async (req, res) => {
 });
 
 
-
 router.post('/:fraccId/notificacion/abrir-puerta', validarFraccionamiento, async (req, res) => {
-  const { residenteId, notificationId, residenteNombre } = req.body;
+  const { residenteId, reporteId, residenteNombre } = req.body;  
   
   try {
     const usuarioValido = validarUsuarioEnFraccionamiento(req.fraccionamiento, residenteId);
@@ -366,18 +383,22 @@ router.post('/:fraccId/notificacion/abrir-puerta', validarFraccionamiento, async
       }
     }, 10000);
 
-    // AGREGAR AQUÍ: Actualizar el reporte
-    if (notificationId) {
-      await Reporte.findByIdAndUpdate(notificationId, {
+    // Actualizar el reporte con el ID correcto
+    if (reporteId) {
+      console.log('Actualizando reporte:', reporteId); // Debug
+      
+      const reporteActualizado = await Reporte.findByIdAndUpdate(reporteId, {
         estatus: 'aceptado',
         autorizadoPor: residenteNombre,
         fechaAutorizacion: new Date()
-      });
+      }, { new: true });
+      
+      console.log('Reporte actualizado:', reporteActualizado); // Debug
       
       const io = req.app.get('io');
       if (io) {
         io.emit('reporteActualizado', {
-          reporteId: notificationId,
+          reporteId: reporteId,
           estatus: 'ACEPTADO',
           autorizadoPor: residenteNombre || 'Usuario'
         });
@@ -397,7 +418,7 @@ router.post('/:fraccId/notificacion/abrir-puerta', validarFraccionamiento, async
 });
 
 router.post('/:fraccId/notificacion/rechazar-acceso', validarFraccionamiento, async (req, res) => {
-  const { residenteId, notificationId, residenteNombre, motivo } = req.body;
+  const { residenteId, reporteId, residenteNombre, motivo } = req.body;  
   
   try {
     const usuarioValido = validarUsuarioEnFraccionamiento(req.fraccionamiento, residenteId);
@@ -405,17 +426,22 @@ router.post('/:fraccId/notificacion/rechazar-acceso', validarFraccionamiento, as
       return res.json({ success: false, message: "Residente no autorizado en este fraccionamiento" });
     }
 
-    if (notificationId) {
-      await Reporte.findByIdAndUpdate(notificationId, {
+    if (reporteId) {
+      console.log('Rechazando reporte:', reporteId); 
+      
+      const reporteActualizado = await Reporte.findByIdAndUpdate(reporteId, {
         estatus: 'rechazado',
         autorizadoPor: residenteNombre,
-        fechaAutorizacion: new Date()
-      });
-      
+        fechaAutorizacion: new Date(),
+        motivoRechazo: motivo
+      }, { new: true });
+
+      console.log('Reporte rechazado:', reporteActualizado);
+
       const io = req.app.get('io');
       if (io) {
         io.emit('reporteActualizado', {
-          reporteId: notificationId,
+          reporteId: reporteId,
           estatus: 'RECHAZADO',
           autorizadoPor: residenteNombre || 'Usuario'
         });
