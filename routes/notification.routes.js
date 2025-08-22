@@ -80,7 +80,6 @@ const crearReporteUnico = async (notificacion, estatus, autorizadoPor) => {
 
   return await nuevoReporte.save();
 };
-
 router.post("/send-notification", async (req, res) => {
   try {
     const { title, body, fraccId, residencia, foto, reporteId } = req.body;
@@ -96,7 +95,6 @@ router.post("/send-notification", async (req, res) => {
       });
     }
 
-    // SIMPLIFICADO: Solo extraer los playerIds únicos
     const playerIds = [...new Set(playersEnCasa
       .map(player => player.playerId)
       .filter(id => id && id.trim() !== ''))];
@@ -113,6 +111,20 @@ router.post("/send-notification", async (req, res) => {
       headings: { en: title },
       contents: { en: body },
       big_picture: foto,
+      ios_badgeType: "Increase",
+      ios_badgeCount: 1,
+      priority: 10,
+      content_available: true,
+      mutable_content: true,
+      ios_sound: "default",
+      android_sound: "default",
+      android_channel_id: "solicitudes_acceso",
+      android_group: "solicitudes",
+      ios_category: "solicitud_acceso",
+      apns_alert: {
+        title: title,
+        body: body
+      },
       data: { 
         fraccId, 
         residencia, 
@@ -120,7 +132,8 @@ router.post("/send-notification", async (req, res) => {
         nombre: title, 
         motivo: body, 
         tipo: 'solicitud_acceso',
-        reporteId: reporteId  
+        reporteId: reporteId,
+        action: 'show_notification_widget'
       }
     };
 
