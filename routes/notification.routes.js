@@ -107,7 +107,6 @@ router.post("/send-notification", async (req, res) => {
       });
     }
 
-    // PAYLOAD SIMPLIFICADO - Solo lo esencial para iOS
     const payload = {
       app_id: process.env.ONESIGNAL_APP_ID,
       include_player_ids: playerIds,
@@ -125,7 +124,9 @@ router.post("/send-notification", async (req, res) => {
         motivo: body, 
         tipo: 'solicitud_acceso',
         reporteId: reporteId,
-        action: 'show_notification_widget'
+        action: 'show_notification_widget',
+        timestamp: Date.now().toString(),
+        notificationId: `${fraccId}_${residencia}_${Date.now()}`
       }
     };
 
