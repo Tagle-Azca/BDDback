@@ -44,7 +44,7 @@ const buscarCasa = (fraccionamiento, numero) => {
 };
 
 const generarQRLinks = (fraccionamientoId, numeroCasa = null) => {
-  const baseUrl = 'https://admin-one-livid.vercel.app';
+  const baseUrl = process.env.REACT_APP_FRONTEND_URL || 'https://admin-one-livid.vercel.app';
   
   return {
     qrAcceso: `${baseUrl}/Visitas?id=${fraccionamientoId}`,
@@ -76,6 +76,24 @@ const validarCasa = (req, res, next) => {
   }
   req.casa = casa;
   next();
+};
+
+const subirImagenCloudinary = async (filePath) => {
+  if (!filePath) {
+    throw new Error("No se recibió ninguna imagen válida.");
+  }
+
+  try {
+    const resultado = await cloudinary.uploader.upload(filePath, { folder: "visitas" });
+    
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+    }
+    
+    return resultado.secure_url;
+  } catch (error) {
+    throw new Error("Error al subir imagen a Cloudinary.");
+  }
 };
 
 router.post("/", async (req, res) => {
@@ -189,50 +207,6 @@ router.post("/residencias/:fraccId/:numero/login", validarFraccionamiento, valid
   }
 });
 
-const enviarNotificacion = async (nombre, motivo, fraccId, residencia, foto, reporteId) => {
-  if (!process.env.ONESIGNAL_API_KEY) {
-    return;
-  }
-
-  try {
-    await fetch("https://ingresosbackend.onrender.com/api/notifications/send-notification", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        title: nombre,
-        body: motivo,
-        fraccId,
-        residencia,
-        foto,
-        nombre,
-        motivo,
-        reporteId,
-        tipo: 'solicitud_acceso'
-      }),
-    });
-  } catch (err) {
-    console.error("Error al enviar la notificación:", err);
-  }
-};
-
-const subirImagenCloudinary = async (filePath) => {
-  if (!filePath) {
-    throw new Error("No se recibió ninguna imagen válida.");
-  }
-
-  try {
-    const resultado = await cloudinary.uploader.upload(filePath, { folder: "visitas" });
-    
-    if (fs.existsSync(filePath)) {
-      fs.unlinkSync(filePath);
-    }
-    
-    return resultado.secure_url;
-  } catch (error) {
-    throw new Error("Error al subir imagen a Cloudinary.");
-  }
-};
-
 router.post("/:fraccId/casas/:numero/visitas", 
   validarFraccionamiento, 
   validarCasa, 
@@ -257,16 +231,15 @@ router.post("/:fraccId/casas/:numero/visitas",
 
       await req.fraccionamiento.save();
 
-      await enviarNotificacion(
-        nombreVisitante,
-        motivo,
-        req.params.fraccId,
-        req.params.numero,
-        fotoUrl,
-        null
-      );
+      res.status(201).json({ 
+        mensaje: "Visita registrada con éxito", 
+        foto: fotoUrl,
+        visitante: nombreVisitante,
+        motivo: motivo,
+        casa: req.params.numero,
+        fraccId: req.params.fraccId
+      });
 
-      res.status(201).json({ mensaje: "Visita registrada con éxito", foto: fotoUrl });
     } catch (error) {
       manejarError(res, error, "Error al registrar visita");
     }
