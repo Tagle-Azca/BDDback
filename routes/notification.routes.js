@@ -47,15 +47,15 @@ router.post("/send-notification", async (req, res) => {
       ios_sound: "default",
       android_sound: "default",
       data: { 
-        notificationId,
-        fraccId, 
-        residencia, 
-        foto, 
-        nombre: title, 
-        motivo: body, 
-        tipo: 'solicitud_acceso',
-        timestamp: Date.now().toString()
-      }
+      notificationId,
+      fraccId: fraccId.toString(),      
+      residencia: residencia.toString(), 
+      foto, 
+      nombre: title, 
+      motivo: body, 
+      tipo: 'solicitud_acceso',
+      timestamp: Date.now().toString()
+    }
     };
 
     console.log("📤 Enviando a OneSignal...");
