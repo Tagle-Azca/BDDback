@@ -80,6 +80,8 @@ const crearReporteUnico = async (notificacion, estatus, autorizadoPor) => {
 
   return await nuevoReporte.save();
 };
+
+
 router.post("/send-notification", async (req, res) => {
   try {
     const { title, body, fraccId, residencia, foto, reporteId } = req.body;
@@ -105,26 +107,16 @@ router.post("/send-notification", async (req, res) => {
       });
     }
 
+    // PAYLOAD SIMPLIFICADO - Solo lo esencial para iOS
     const payload = {
       app_id: process.env.ONESIGNAL_APP_ID,
       include_player_ids: playerIds,
       headings: { en: title },
       contents: { en: body },
       big_picture: foto,
-      ios_badgeType: "Increase",
-      ios_badgeCount: 1,
       priority: 10,
       content_available: true,
-      mutable_content: true,
       ios_sound: "default",
-      android_sound: "default",
-      android_channel_id: "solicitudes_acceso",
-      android_group: "solicitudes",
-      ios_category: "solicitud_acceso",
-      apns_alert: {
-        title: title,
-        body: body
-      },
       data: { 
         fraccId, 
         residencia, 
@@ -137,6 +129,8 @@ router.post("/send-notification", async (req, res) => {
       }
     };
 
+    console.log("📤 Enviando payload:", JSON.stringify(payload, null, 2));
+
     const response = await fetch("https://onesignal.com/api/v1/notifications", {
       method: "POST",
       headers: {
@@ -147,6 +141,8 @@ router.post("/send-notification", async (req, res) => {
     });
 
     const resultado = await response.json();
+    console.log("📥 Respuesta OneSignal:", JSON.stringify(resultado, null, 2));
+
     await Notificacion.create({ title, body, fraccId, residencia, foto });
 
     res.json({ 
