@@ -46,7 +46,6 @@ router.post("/send-notification", async (req, res) => {
       content_available: true,
       ios_sound: "default",
       android_sound: "default",
-      ios_interruption_level: "time-sensitive",
       data: { 
       notificationId,
       fraccId: fraccId.toString(),      
