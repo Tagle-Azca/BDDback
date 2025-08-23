@@ -43,31 +43,19 @@ router.post("/send-notification", async (req, res) => {
       contents: { en: body },
       big_picture: foto,
       priority: 10,
-      ttl: 2419200,
       content_available: true,
-      mutable_content: true,
       ios_sound: "default",
       android_sound: "default",
-      android_channel_id: "solicitudes_acceso",
-      ios_badgeType: "Increase",
-      ios_badgeCount: 1,
-      ios_category: "SOLICITUD_ACCESO",
-      ios_interruption_level: "time-sensitive",
-      ios_relevance_score: 1.0,
-      android_accent_color: "FF4CAF50",
-      android_visibility: 1,
-      android_led_color: "FF4CAF50",
-      android_small_icon: "ic_stat_onesignal_default",
       data: { 
-        notificationId,
-        fraccId: fraccId.toString(),      
-        residencia: residencia.toString(), 
-        foto, 
-        nombre: title, 
-        motivo: body, 
-        tipo: 'solicitud_acceso',
-        timestamp: Date.now().toString()
-      }
+      notificationId,
+      fraccId: fraccId.toString(),      
+      residencia: residencia.toString(), 
+      foto, 
+      nombre: title, 
+      motivo: body, 
+      tipo: 'solicitud_acceso',
+      timestamp: Date.now().toString()
+    }
     };
 
     console.log("📤 Enviando a OneSignal...");
