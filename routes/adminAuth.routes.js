@@ -10,7 +10,7 @@ router.post("/login", async (req, res) => {
   try {
     const { usuario, contrasena } = req.body;
 
-    console.log("🔍 Intentando login con usuario:", usuario);
+    console.log("Intentando login con usuario:", usuario);
 
     let user = await Admin.findOne({ usuario });
 
@@ -25,11 +25,11 @@ router.post("/login", async (req, res) => {
 
     console.log("Usuario encontrado en:", user.rol);
 
-    console.log("🔐 Contraseña recibida en login:", contrasena);
-    console.log("🔐 Hash almacenado en MongoDB:", user.contrasena);
+    console.log("Contraseña recibida en login:", contrasena);
+    console.log("Hash almacenado en MongoDB:", user.contrasena);
 
     const isMatch = await bcrypt.compare(contrasena, user.contrasena);
-    console.log("✅ Resultado de bcrypt.compare:", isMatch);
+    console.log("Resultado de bcrypt.compare:", isMatch);
 
     if (!isMatch) {
       console.log("Contraseña incorrecta");
@@ -75,7 +75,7 @@ router.post("/register", async (req, res) => {
       fraccionamientoId,
     } = req.body;
 
-    console.log("🔍 Intentando registrar usuario:", usuario);
+    console.log("Intentando registrar usuario:", usuario);
 
     let existingUser =
       (await Admin.findOne({ usuario })) ||
@@ -87,7 +87,7 @@ router.post("/register", async (req, res) => {
     }
 
     const hashedPassword = await bcrypt.hash(contrasena, 10);
-    console.log("🔒 Hash generado en registro:", hashedPassword); 
+    console.log("Hash generado en registro:", hashedPassword); 
 
     let newUser;
     if (rol === "superadmin") {

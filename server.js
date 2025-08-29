@@ -18,7 +18,7 @@ const server = http.createServer(app);
 const io = socketIo(server, {
   cors: {
     origin: [
-      'http://localhost:3001',
+      'http://localhost:3000',
       'https://admin-one-livid.vercel.app',
       '*' 
     ],
@@ -28,7 +28,7 @@ const io = socketIo(server, {
 });
 
 io.on('connection', (socket) => {
-  console.log(`📱 Usuario conectado: ${socket.id}`);
+  console.log(`Usuario conectado: ${socket.id}`);
 
   socket.on('joinHouse', ({ numeroCasa, fraccId, userId }) => {
     const room = `casa_${numeroCasa}_${fraccId}`;
@@ -47,14 +47,14 @@ global.emitToHouse = (numeroCasa, fraccId, event, data) => {
   if (global.io) {
     const room = `casa_${numeroCasa}_${fraccId}`;
     global.io.to(room).emit(event, data);
-    console.log(`📢 Emitiendo ${event} a ${room}:`, data);
+    console.log(`Emitiendo ${event} a ${room}:`, data);
   }
 };
 
 app.use(cors({
   origin: function (origin, callback) {
     const allowedOrigins = [
-      'http://localhost:3001',
+      'http://localhost:3000',
       'https://admin-one-livid.vercel.app'
     ];
     if (!origin || allowedOrigins.includes(origin)) {
@@ -97,7 +97,7 @@ mongoose
     `))
   
   .catch((err) => {
-    console.error("!!!!Error conectando a MongoDB:", err);
+    console.error("Error conectando a MongoDB");
     process.exit(1);
   });
 

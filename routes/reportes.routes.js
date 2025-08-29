@@ -33,7 +33,6 @@ const validarUsuarioEnFraccionamiento = (fraccionamiento, residenteId) => {
   }
   return false;
 };
-
 router.post("/:fraccId/crear", validarFraccionamiento, async (req, res) => {
   try {
     const { 
@@ -69,14 +68,26 @@ router.post("/:fraccId/crear", validarFraccionamiento, async (req, res) => {
       }
     }
 
-    if (notificationId) {
-      const reporteExistente = await Reporte.findOne({ notificationId });
-      if (reporteExistente) {
-        return res.status(409).json({ 
-          error: "Ya existe un reporte para esta notificación",
-          reporte: reporteExistente
-        });
+    const criterioDuplicado = {
+      fraccId: req.params.fraccId,
+      numeroCasa: numeroCasa.toString(),
+      nombre: nombre,
+      motivo: motivo,
+      tiempo: {
+        $gte: new Date(Date.now() - 60000)
       }
+    };
+
+    if (notificationId) {
+      criterioDuplicado.notificationId = notificationId;
+    }
+
+    const reporteExistente = await Reporte.findOne(criterioDuplicado);
+    if (reporteExistente) {
+      return res.status(409).json({ 
+        error: "Ya existe un reporte similar reciente",
+        reporte: reporteExistente
+      });
     }
 
     const nuevoReporte = new Reporte({
@@ -93,7 +104,7 @@ router.post("/:fraccId/crear", validarFraccionamiento, async (req, res) => {
 
     const reporteGuardado = await nuevoReporte.save();
     
-    console.log(`✅ Reporte creado: ${reporteGuardado._id} - ${estatus.toUpperCase()}`);
+    console.log(`Reporte creado: ${reporteGuardado._id} - ${estatus.toUpperCase()}`);
 
     const io = req.app.get('io');
     if (io) {
@@ -118,7 +129,7 @@ router.post("/:fraccId/crear", validarFraccionamiento, async (req, res) => {
             { _id: req.params.fraccId }, 
             { $set: { puerta: false } }
           );
-          console.log("🚪 Puerta cerrada automáticamente");
+          console.log("Puerta cerrada automáticamente");
         } catch (error) {
           console.error('Error cerrando puerta automáticamente:', error);
         }
