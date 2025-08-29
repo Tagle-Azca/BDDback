@@ -9,10 +9,10 @@ const client = new OneSignal.Client(
 async function sendNotification(notificationData) {
   try {
     const response = await client.createNotification(notificationData);
-    console.log("Notificación enviada:", response.body);
+    console.log("🔔 Notificación enviada:", response.body);
     return response.body;
   } catch (error) {
-    console.error("Error al enviar notificación:", error);
+    console.error("❌ Error al enviar notificación:", error);
     throw error;
   }
 }
