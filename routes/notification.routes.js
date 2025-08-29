@@ -8,14 +8,14 @@ router.post("/send-notification", async (req, res) => {
   try {
     const { title, body, fraccId, residencia, foto } = req.body;
 
-    console.log("📤 ENVIANDO NOTIFICACIÓN:", { fraccId, residencia, title });
+    console.log("ENVIANDO NOTIFICACIÓN:", { fraccId, residencia, title });
 
     const playersEnCasa = await PlayerRegistry.find({ 
       fraccId: fraccId, 
       residencia: residencia.toString() 
     });
 
-    console.log("📱 Dispositivos encontrados:", playersEnCasa.length);
+    console.log("Dispositivos encontrados:", playersEnCasa.length);
 
     if (playersEnCasa.length === 0) {
       return res.status(400).json({ 
@@ -27,7 +27,7 @@ router.post("/send-notification", async (req, res) => {
       .map(player => player.playerId)
       .filter(id => id && id.trim() !== ''))];
 
-    console.log("🎯 Player IDs:", playerIds);
+    console.log("Player IDs:", playerIds);
 
     if (playerIds.length === 0) {
       return res.status(400).json({ 
@@ -59,7 +59,7 @@ router.post("/send-notification", async (req, res) => {
     }
     };
 
-    console.log("📤 Enviando a OneSignal...");
+    console.log("Enviando a OneSignal...");
 
     const response = await fetch("https://onesignal.com/api/v1/notifications", {
       method: "POST",
@@ -72,7 +72,7 @@ router.post("/send-notification", async (req, res) => {
 
     const resultado = await response.json();
     
-    console.log("📥 Respuesta OneSignal:", {
+    console.log("Respuesta OneSignal:", {
       id: resultado.id,
       recipients: resultado.recipients,
       errors: resultado.errors
@@ -113,7 +113,7 @@ router.post("/send-notification", async (req, res) => {
     });
 
   } catch (error) {
-    console.error("❌ Error enviando notificación:", error);
+    console.error("Error enviando notificación:", error);
     res.status(500).json({ 
       success: false,
       error: "Error al enviar notificación" 
