@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const fetch = require("node-fetch");
 const PlayerRegistry = require("../models/playerRegistry");
+const Reporte = require("../models/Reportes");
 
 router.post("/send-notification", async (req, res) => {
   try {
@@ -76,6 +77,32 @@ router.post("/send-notification", async (req, res) => {
       recipients: resultado.recipients,
       errors: resultado.errors
     });
+
+    setTimeout(async () => {
+      try {
+        const reporteActualizado = await Reporte.updateOne(
+          { 
+            fraccId: fraccId,
+            numeroCasa: residencia.toString(),
+            notificationId: notificationId,
+            estatus: { $nin: ['aceptado', 'rechazado', 'cancelado'] }
+          },
+          { 
+            $set: { 
+              estatus: 'expirado', 
+              autorizadoPor: 'Sistema',
+              fechaAutorizacion: new Date()
+            } 
+          }
+        );
+        
+        if (reporteActualizado.modifiedCount > 0) {
+          console.log(`Notificación ${notificationId} expirada automáticamente`);
+        }
+      } catch (error) {
+        console.error(`Error expirando notificación ${notificationId}:`, error);
+      }
+    }, 5 * 60 * 1000);
 
     res.json({ 
       success: true,
