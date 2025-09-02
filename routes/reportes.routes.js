@@ -79,6 +79,22 @@ router.post("/:fraccId/crear", validarFraccionamiento, async (req, res) => {
       }
     }
 
+    const cincuMinutosAtras = new Date(Date.now() - 5 * 60 * 1000);
+    const reporteRecienteEnCasa = await Reporte.findOne({
+      fraccId: req.params.fraccId,
+      numeroCasa: numeroCasa.toString(),
+      nombre: nombre,
+      motivo: motivo,
+      tiempo: { $gte: cincuMinutosAtras }
+    });
+
+    if (reporteRecienteEnCasa) {
+      return res.status(409).json({ 
+        error: "Ya existe un reporte similar reciente para esta casa",
+        reporte: reporteRecienteEnCasa
+      });
+    }
+
     const nuevoReporte = new Reporte({
       fraccId: req.params.fraccId,
       numeroCasa: numeroCasa.toString(),
@@ -91,9 +107,19 @@ router.post("/:fraccId/crear", validarFraccionamiento, async (req, res) => {
       notificationId: notificationId
     });
 
-    const reporteGuardado = await nuevoReporte.save();
-    
-    console.log(`✅ Reporte creado: ${reporteGuardado._id} - ${estatus.toUpperCase()}`);
+    let reporteGuardado;
+    try {
+      reporteGuardado = await nuevoReporte.save();
+      console.log(`Reporte creado: ${reporteGuardado._id} - ${estatus.toUpperCase()}`);
+    } catch (mongoError) {
+      if (mongoError.code === 11000) {
+        return res.status(409).json({ 
+          error: "Ya existe un reporte idéntico. Solo se puede procesar uno a la vez.",
+          details: "Reporte duplicado bloqueado por filtro milimétrico"
+        });
+      }
+      throw mongoError;
+    }
 
     const io = req.app.get('io');
     if (io) {
@@ -118,7 +144,7 @@ router.post("/:fraccId/crear", validarFraccionamiento, async (req, res) => {
             { _id: req.params.fraccId }, 
             { $set: { puerta: false } }
           );
-          console.log("🚪 Puerta cerrada automáticamente");
+          console.log("Puerta cerrada automáticamente");
         } catch (error) {
           console.error('Error cerrando puerta automáticamente:', error);
         }
