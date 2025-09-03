@@ -49,3 +49,4 @@ jspm_packages/
 ._*
 .Spotlight-V100
 .Trashes.env
+package-lock.json
