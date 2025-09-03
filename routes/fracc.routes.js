@@ -4,6 +4,7 @@ const path = require("path");
 const fs = require("fs");
 const fetch = require("node-fetch");
 const Fraccionamiento = require("../models/fraccionamiento");
+const PlayerRegistry = require("../models/playerRegistry");
 const { v4: uuidv4 } = require("uuid");
 const bcrypt = require("bcrypt");
 const cloudinary = require("../config/cloudinary");
@@ -271,5 +272,129 @@ router.post("/login", async (req, res) => {
     manejarError(res, error, "Error del servidor al iniciar sesión");
   }
 });
+
+// Endpoint para restablecer residente inactivo
+router.put("/:fraccId/casas/:numero/residentes/:residenteId/restablecer", 
+  validarFraccionamiento, 
+  validarCasa, 
+  async (req, res) => {
+    try {
+      const { residenteId } = req.params;
+      
+      const residente = req.casa.residentes.find(r => r._id.toString() === residenteId);
+      if (!residente) {
+        return res.status(404).json({ error: "Residente no encontrado" });
+      }
+
+      // Limpiar player ID anterior del registry si existe
+      if (residente.playerId) {
+        await PlayerRegistry.deleteMany({ 
+          playerId: residente.playerId,
+          fraccId: req.fraccionamiento._id.toString(),
+          userId: residenteId 
+        });
+      }
+
+      // Restablecer el residente
+      residente.activo = true;
+      residente.playerId = null; // Limpiar player ID para que se genere uno nuevo
+      
+      await req.fraccionamiento.save();
+      
+      res.status(200).json({ 
+        message: "Residente restablecido exitosamente", 
+        residente: {
+          _id: residente._id,
+          nombre: residente.nombre,
+          activo: residente.activo,
+          playerId: residente.playerId
+        }
+      });
+    } catch (error) {
+      manejarError(res, error, "Error al restablecer residente");
+    }
+  }
+);
+
+// Endpoint para toggle estado activo/inactivo de residente
+router.put("/:fraccId/casas/:numero/residentes/:residenteId/toggle", 
+  validarFraccionamiento, 
+  validarCasa, 
+  async (req, res) => {
+    try {
+      const { residenteId } = req.params;
+      
+      const residente = req.casa.residentes.find(r => r._id.toString() === residenteId);
+      if (!residente) {
+        return res.status(404).json({ error: "Residente no encontrado" });
+      }
+
+      // Si va a desactivar, limpiar player ID del registry
+      if (residente.activo && residente.playerId) {
+        await PlayerRegistry.deleteMany({ 
+          playerId: residente.playerId,
+          fraccId: req.fraccionamiento._id.toString(),
+          userId: residenteId 
+        });
+      }
+
+      // Toggle del estado activo
+      residente.activo = !residente.activo;
+      
+      // Si se desactiva, limpiar player ID. Si se reactiva, permitir que se genere uno nuevo
+      if (!residente.activo) {
+        residente.playerId = null;
+      } else {
+        residente.playerId = null; // También limpiar para generar uno nuevo al reactivar
+      }
+      
+      await req.fraccionamiento.save();
+      
+      res.status(200).json({ 
+        message: `Residente ${residente.activo ? 'activado' : 'desactivado'} exitosamente`, 
+        residente: {
+          _id: residente._id,
+          nombre: residente.nombre,
+          activo: residente.activo,
+          playerId: residente.playerId
+        }
+      });
+    } catch (error) {
+      manejarError(res, error, "Error al cambiar estado del residente");
+    }
+  }
+);
+
+// Endpoint para obtener residentes inactivos de un fraccionamiento
+router.get("/:fraccId/residentes/inactivos", 
+  validarFraccionamiento, 
+  async (req, res) => {
+    try {
+      const residentesInactivos = [];
+      
+      req.fraccionamiento.residencias.forEach(casa => {
+        casa.residentes.forEach(residente => {
+          if (!residente.activo) {
+            residentesInactivos.push({
+              _id: residente._id,
+              nombre: residente.nombre,
+              relacion: residente.relacion,
+              activo: residente.activo,
+              playerId: residente.playerId,
+              casa: casa.numero
+            });
+          }
+        });
+      });
+      
+      res.status(200).json({ 
+        residentesInactivos,
+        total: residentesInactivos.length 
+      });
+    } catch (error) {
+      manejarError(res, error, "Error al obtener residentes inactivos");
+    }
+  }
+);
 
 module.exports = router;
