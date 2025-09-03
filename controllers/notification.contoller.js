@@ -1,18 +1,25 @@
-const OneSignal = require('onesignal-node');
+const axios = require('axios');
 
-const client = new OneSignal.Client(
-  process.env.ONESIGNAL_APP_ID?.trim(),
-  process.env.ONESIGNAL_API_KEY?.trim()
-);
-
+const ONESIGNAL_API_URL = 'https://api.onesignal.com/api/v1/notifications';
+const ONESIGNAL_APP_ID = process.env.ONESIGNAL_APP_ID?.trim();
+const ONESIGNAL_API_KEY = process.env.ONESIGNAL_API_KEY?.trim();
 
 async function sendNotification(notificationData) {
   try {
-    const response = await client.createNotification(notificationData);
-    console.log("Notificación enviada:", response.body);
-    return response.body;
+    const payload = {
+      ...notificationData,
+      app_id: ONESIGNAL_APP_ID
+    };
+
+    const response = await axios.post(ONESIGNAL_API_URL, payload, {
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Basic ${ONESIGNAL_API_KEY}`
+      }
+    });
+
+    return response.data;
   } catch (error) {
-    console.error("Error al enviar notificación:", error);
     throw error;
   }
 }

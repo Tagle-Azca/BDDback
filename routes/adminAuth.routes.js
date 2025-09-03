@@ -10,29 +10,22 @@ router.post("/login", async (req, res) => {
   try {
     const { usuario, contrasena } = req.body;
 
-    console.log("🔍 Intentando login con usuario:", usuario);
 
     let user = await Admin.findOne({ usuario });
 
-    if (!utrwoer) {
+    if (!user) {
       user = await FraccAdmin.findOne({ usuario });
     }
 
     if (!user) {
-      console.log("Usuario no encontrado");
       return res.status(404).json({ error: "Usuario no encontrado" });
     }
 
-    console.log("Usuario encontrado en:", user.rol);
 
-    console.log("🔐 Contraseña recibida en login:", contrasena);
-    console.log("🔐 Hash almacenado en MongoDB:", user.contrasena);
 
     const isMatch = await bcrypt.compare(contrasena, user.contrasena);
-    console.log("✅ Resultado de bcrypt.compare:", isMatch);
 
     if (!isMatch) {
-      console.log("Contraseña incorrecta");
       return res.status(400).json({ error: "Contraseña incorrecta" });
     }
 
@@ -46,7 +39,6 @@ router.post("/login", async (req, res) => {
       { expiresIn: "1h" }
     );
 
-    console.log("Login exitoso:", { usuario: user.usuario, rol: user.rol });
 
     return res.json({
       message: "Login exitoso",
@@ -58,7 +50,6 @@ router.post("/login", async (req, res) => {
           : `/dashboard/:id${user.fraccionamientoId}`,
     });
   } catch (error) {
-    console.error("Error en el login:", error);
     res.status(500).json({ error: "Error en el servidor" });
   }
 });
@@ -75,19 +66,17 @@ router.post("/register", async (req, res) => {
       fraccionamientoId,
     } = req.body;
 
-    console.log("🔍 Intentando registrar usuario:", usuario);
 
     let existingUser =
       (await Admin.findOne({ usuario })) ||
       (await FraccAdmin.findOne({ usuario }));
 
     if (existingUser) {
-      console.log("El usuario ya está registrado");
       return res.status(400).json({ error: "El usuario ya está registrado" });
     }
 
     const hashedPassword = await bcrypt.hash(contrasena, 10);
-    console.log("🔒 Hash generado en registro:", hashedPassword); 
+ 
 
     let newUser;
     if (rol === "superadmin") {
@@ -114,10 +103,8 @@ router.post("/register", async (req, res) => {
 
     await newUser.save();
 
-    console.log("Usuario registrado con éxito:", usuario);
     res.status(201).json({ message: "Usuario registrado con éxito" });
   } catch (error) {
-    console.error("Error en el registro:", error);
     res.status(500).json({ error: "Error en el servidor" });
   }
 });

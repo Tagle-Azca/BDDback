@@ -28,7 +28,6 @@ const validarCampos = (campos, res) => {
 };
 
 const manejarError = (res, error, mensaje = "Error interno del servidor", status = 500) => {
-  console.error(mensaje, error);
   res.status(status).json({ error: mensaje });
 };
 
@@ -273,7 +272,6 @@ router.post("/login", async (req, res) => {
   }
 });
 
-// Endpoint para restablecer residente inactivo
 router.put("/:fraccId/casas/:numero/residentes/:residenteId/restablecer", 
   validarFraccionamiento, 
   validarCasa, 
@@ -286,7 +284,6 @@ router.put("/:fraccId/casas/:numero/residentes/:residenteId/restablecer",
         return res.status(404).json({ error: "Residente no encontrado" });
       }
 
-      // Limpiar player ID anterior del registry si existe
       if (residente.playerId) {
         await PlayerRegistry.deleteMany({ 
           playerId: residente.playerId,
@@ -295,9 +292,8 @@ router.put("/:fraccId/casas/:numero/residentes/:residenteId/restablecer",
         });
       }
 
-      // Restablecer el residente
       residente.activo = true;
-      residente.playerId = null; // Limpiar player ID para que se genere uno nuevo
+      residente.playerId = null;
       
       await req.fraccionamiento.save();
       
@@ -316,7 +312,6 @@ router.put("/:fraccId/casas/:numero/residentes/:residenteId/restablecer",
   }
 );
 
-// Endpoint para toggle estado activo/inactivo de residente
 router.put("/:fraccId/casas/:numero/residentes/:residenteId/toggle", 
   validarFraccionamiento, 
   validarCasa, 
@@ -329,7 +324,6 @@ router.put("/:fraccId/casas/:numero/residentes/:residenteId/toggle",
         return res.status(404).json({ error: "Residente no encontrado" });
       }
 
-      // Si va a desactivar, limpiar player ID del registry
       if (residente.activo && residente.playerId) {
         await PlayerRegistry.deleteMany({ 
           playerId: residente.playerId,
@@ -338,14 +332,12 @@ router.put("/:fraccId/casas/:numero/residentes/:residenteId/toggle",
         });
       }
 
-      // Toggle del estado activo
       residente.activo = !residente.activo;
       
-      // Si se desactiva, limpiar player ID. Si se reactiva, permitir que se genere uno nuevo
       if (!residente.activo) {
         residente.playerId = null;
       } else {
-        residente.playerId = null; // También limpiar para generar uno nuevo al reactivar
+        residente.playerId = null;
       }
       
       await req.fraccionamiento.save();
@@ -365,7 +357,6 @@ router.put("/:fraccId/casas/:numero/residentes/:residenteId/toggle",
   }
 );
 
-// Endpoint para obtener residentes inactivos de un fraccionamiento
 router.get("/:fraccId/residentes/inactivos", 
   validarFraccionamiento, 
   async (req, res) => {

@@ -8,14 +8,12 @@ router.post("/send-notification", async (req, res) => {
   try {
     const { title, body, fraccId, residencia, foto } = req.body;
 
-    console.log("ENVIANDO NOTIFICACIÓN:", { fraccId, residencia, title });
 
     const playersEnCasa = await PlayerRegistry.find({ 
       fraccId: fraccId, 
       residencia: residencia.toString() 
     });
 
-    console.log("Dispositivos encontrados:", playersEnCasa.length);
 
     if (playersEnCasa.length === 0) {
       return res.status(400).json({ 
@@ -27,7 +25,6 @@ router.post("/send-notification", async (req, res) => {
       .map(player => player.playerId)
       .filter(id => id && id.trim() !== ''))];
 
-    console.log("Player IDs:", playerIds);
 
     if (playerIds.length === 0) {
       return res.status(400).json({ 
@@ -59,7 +56,6 @@ router.post("/send-notification", async (req, res) => {
     }
     };
 
-    console.log("Enviando a OneSignal...");
 
     const response = await fetch("https://onesignal.com/api/v1/notifications", {
       method: "POST",
@@ -72,11 +68,6 @@ router.post("/send-notification", async (req, res) => {
 
     const resultado = await response.json();
     
-    console.log("Respuesta OneSignal:", {
-      id: resultado.id,
-      recipients: resultado.recipients,
-      errors: resultado.errors
-    });
 
     setTimeout(async () => {
       try {
@@ -97,10 +88,8 @@ router.post("/send-notification", async (req, res) => {
         );
         
         if (reporteActualizado.modifiedCount > 0) {
-          console.log(`Notificación ${notificationId} expirada automáticamente`);
         }
       } catch (error) {
-        console.error(`Error expirando notificación ${notificationId}:`, error);
       }
     }, 5 * 60 * 1000);
 
@@ -113,7 +102,6 @@ router.post("/send-notification", async (req, res) => {
     });
 
   } catch (error) {
-    console.error("Error enviando notificación:", error);
     res.status(500).json({ 
       success: false,
       error: "Error al enviar notificación" 
@@ -148,7 +136,6 @@ router.post("/register", async (req, res) => {
     });
     
   } catch (error) {
-    console.error("Error registrando dispositivo:", error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -173,7 +160,6 @@ router.get("/devices/:fraccId/:residencia", async (req, res) => {
     });
     
   } catch (error) {
-    console.error("Error verificando dispositivos:", error);
     res.status(500).json({ error: error.message });
   }
 });

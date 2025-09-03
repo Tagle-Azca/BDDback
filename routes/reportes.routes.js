@@ -5,7 +5,6 @@ const Fraccionamiento = require("../models/fraccionamiento");
 const mongoose = require("mongoose");
 
 const manejarError = (res, error, mensaje = "Error interno del servidor", status = 500) => {
-  console.error(mensaje, error);
   res.status(status).json({ error: mensaje });
 };
 
@@ -110,7 +109,6 @@ router.post("/:fraccId/crear", validarFraccionamiento, async (req, res) => {
     let reporteGuardado;
     try {
       reporteGuardado = await nuevoReporte.save();
-      console.log(`Reporte creado: ${reporteGuardado._id} - ${estatus.toUpperCase()}`);
     } catch (mongoError) {
       if (mongoError.code === 11000) {
         return res.status(409).json({ 
@@ -144,9 +142,7 @@ router.post("/:fraccId/crear", validarFraccionamiento, async (req, res) => {
             { _id: req.params.fraccId }, 
             { $set: { puerta: false } }
           );
-          console.log("Puerta cerrada automáticamente");
         } catch (error) {
-          console.error('Error cerrando puerta automáticamente:', error);
         }
       }, 10000);
     }
@@ -159,7 +155,6 @@ router.post("/:fraccId/crear", validarFraccionamiento, async (req, res) => {
     });
 
   } catch (error) {
-    console.error("Error creando reporte:", error);
     manejarError(res, error, "Error al crear reporte");
   }
 });
@@ -194,7 +189,6 @@ router.get("/:fraccId", async (req, res) => {
     });
     
   } catch (error) {
-    console.error("Error obteniendo reportes del fraccionamiento:", error);
     manejarError(res, error, "Error al obtener reportes");
   }
 });
@@ -233,7 +227,6 @@ router.get("/:fraccId/casa/:numeroCasa", async (req, res) => {
     });
     
   } catch (error) {
-    console.error("Error obteniendo historial de casa:", error);
     manejarError(res, error, "Error al obtener historial de casa");
   }
 });
@@ -254,7 +247,6 @@ router.get("/reporte/:reporteId", async (req, res) => {
     });
     
   } catch (error) {
-    console.error("Error obteniendo reporte:", error);
     manejarError(res, error, "Error al obtener reporte");
   }
 });
@@ -292,7 +284,6 @@ router.put("/reporte/:reporteId", async (req, res) => {
     });
     
   } catch (error) {
-    console.error("Error actualizando reporte:", error);
     manejarError(res, error, "Error al actualizar reporte");
   }
 });

@@ -31,7 +31,6 @@ const loginUser = async (req, res) => {
       user: { correo: usuario.correo },
     });
   } catch (error) {
-    console.error("Error al iniciar sesión:", error);
     return res.status(500).json({
       error: "Ocurrió un error al procesar el inicio de sesión",
     });
@@ -56,7 +55,6 @@ const registerUser = async (req, res) => {
       usuario: { correo: nuevoUsuario.correo },
     });
   } catch (error) {
-    console.error("Error al registrar usuario:", error);
     res.status(500).json({
       error: error.message || "Ocurrió un error al registrar el usuario",
     });

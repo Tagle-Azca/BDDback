@@ -16,7 +16,6 @@ const registerHouse = async (fraccionamiento, casaDatos) => {
       };
     }
 
-    console.log("Fraccionamiento encontrado:", fraccionamientoEncontrado);
 
     const nuevosResidentes = casaDatos.residentes.map((residente) => ({
       nombre: residente.nombre,
@@ -45,7 +44,6 @@ const registerHouse = async (fraccionamiento, casaDatos) => {
       residencia: residenciaActualizada,
     };
   } catch (error) {
-    console.error("Error registrando la residencia:", error);
     return { error: "Ocurrió un error al registrar la residencia." };
   }
 };

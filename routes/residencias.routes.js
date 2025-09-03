@@ -33,7 +33,6 @@ router.get("/get-house", async (req, res) => {
     const residencias = await Residencias.find();
     res.status(200).json(residencias);
   } catch (error) {
-    console.error("Error al obtener las residencias:", error);
     return res.status(500).json({
       error: "Error al obtener las residencias",
     });
@@ -87,7 +86,6 @@ router.put("/update-residentes/:id", async (req, res) => {
       data: residencia,
     });
   } catch (error) {
-    console.error("Error al actualizar los residentes:", error);
     res.status(500).json({
       error: "Ocurrió un error al actualizar los residentes.",
     });

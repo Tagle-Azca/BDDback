@@ -28,16 +28,13 @@ const io = socketIo(server, {
 });
 
 io.on('connection', (socket) => {
-  console.log(`Usuario conectado: ${socket.id}`);
 
   socket.on('joinHouse', ({ numeroCasa, fraccId, userId }) => {
     const room = `casa_${numeroCasa}_${fraccId}`;
     socket.join(room);
-    console.log(`Usuario ${userId || socket.id} se unió a ${room}`);
   });
 
   socket.on('disconnect', () => {
-    console.log(`Usuario desconectado: ${socket.id}`);
   });
 });
 
@@ -47,7 +44,6 @@ global.emitToHouse = (numeroCasa, fraccId, event, data) => {
   if (global.io) {
     const room = `casa_${numeroCasa}_${fraccId}`;
     global.io.to(room).emit(event, data);
-    console.log(`Emitiendo ${event} a ${room}:`, data);
   }
 };
 
@@ -72,32 +68,14 @@ app.use(express.json());
 const MONGO_URI = process.env.MONGO_URI;
 
 if (!MONGO_URI) {
-  console.error(
-    "Error: La URI de conexión a MongoDB no está definida en el archivo .env"
-  );
   process.exit(1);
 }
 
 mongoose
   .connect(MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
-  .then(() => console.log(`
-    ⠀⠀⠀⠀
-                    .  
-                   .'.
-                   |o|
-                  .'o'.
-                  |.-.|
-                  '   '
-                   ( )
-                    )
-                   ( )
-
-
-    Connected to MongoDB successfully!
-    `))
+  .then(() => {})
   
   .catch((err) => {
-    console.error("!!!!Error conectando a MongoDB:", err);
     process.exit(1);
   });
 
@@ -114,7 +92,4 @@ app.use("/api/qr-puerta", qrPuertaRoutes);
 const PORT = process.env.PORT || 5002;
 
 server.listen(PORT, "0.0.0.0", () => {
-  console.log(`Servidor corriendo en puerto ${PORT}`);
-  console.log(`WebSocket habilitado`);
-  console.log(`CORS configurado para Flutter y Admin`);
 });
