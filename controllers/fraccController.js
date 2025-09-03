@@ -23,7 +23,7 @@ exports.addFraccUser = async (req, res) => {
 
     const qrId = nuevoUsuario.fraccionamiento?.qrVisitas || nuevoUsuario.qrVisitas;
 
-    const link = `https://ingresos-drab.vercel.app/Visitas?id=${qrId}`;
+    const link = `https://admin-one-livid.vercel.app/Visitas?id=${qrId}`;
 
     const qrImage = await QRCode.toDataURL(link);
 
@@ -95,7 +95,7 @@ exports.updateFraccUser = async (req, res) => {
     }
 
     const qrId = fraccActualizado.fraccionamiento?.qrVisitas || fraccActualizado.qrVisitas;
-    const link = `https://ingresos-drab.vercel.app/Visitas?id=${qrId}`;
+    const link = `https://admin-one-livid.vercel.app/Visitas?id=${qrId}`;
     const qrImage = await QRCode.toDataURL(link);
 
     res.status(200).json({

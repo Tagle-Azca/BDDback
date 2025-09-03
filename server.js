@@ -19,7 +19,7 @@ const io = socketIo(server, {
   cors: {
     origin: [
       'http://localhost:3001',
-      'https://ingresos-drab.vercel.app',
+      'https://admin-one-livid.vercel.app',
       '*' 
     ],
     methods: ["GET", "POST"],
@@ -51,7 +51,7 @@ app.use(cors({
   origin: function (origin, callback) {
     const allowedOrigins = [
       'http://localhost:3001',
-      'https://ingresos-drab.vercel.app'
+      'https://admin-one-livid.vercel.app'
     ];
     if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
