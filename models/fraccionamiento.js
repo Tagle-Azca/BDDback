@@ -29,7 +29,7 @@ const fraccionamientoSchema = new mongoose.Schema({
   qrVisitas: {
     type: String,
     default: function () {
-      return `https://admin-one-livid.vercel.app/Visitas?id=${this._id}`;
+      return `https://ingresos-drab.vercel.app/Visitas?id=${this._id}`;
     },
   },
   fechaGenerada: {

@@ -23,7 +23,7 @@ exports.addFraccUser = async (req, res) => {
 
     const qrId = nuevoUsuario.fraccionamiento?.qrVisitas || nuevoUsuario.qrVisitas;
 
-    const link = `https://admin-one-livid.vercel.app/Invitados/qrVisitas?id=${qrId}`;
+    const link = `https://ingresos-drab.vercel.app/Visitas?id=${qrId}`;
 
     const qrImage = await QRCode.toDataURL(link);
 

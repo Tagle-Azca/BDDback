@@ -44,7 +44,7 @@ const buscarCasa = (fraccionamiento, numero) => {
 };
 
 const generarQRLinks = (fraccionamientoId, numeroCasa = null) => {
-  const baseUrl = process.env.REACT_APP_FRONTEND_URL || 'https://admin-one-livid.vercel.app';
+  const baseUrl = process.env.REACT_APP_FRONTEND_URL || 'https://ingresos-drab.vercel.app';
   
   return {
     qrAcceso: `${baseUrl}/Visitas?id=${fraccionamientoId}`,
