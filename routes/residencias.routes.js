@@ -1,6 +1,7 @@
 const express = require("express");
 const { v4: uuidv4 } = require("uuid");
 const Residencias = require("../models/Residencias");
+const PlayerRegistry = require("../models/playerRegistry");
 const router = express.Router();
 router.post("/register-house", async (req, res) => {
   const { fraccionamiento, casaDatos } = req.body;
@@ -88,6 +89,42 @@ router.put("/update-residentes/:id", async (req, res) => {
   } catch (error) {
     res.status(500).json({
       error: "Ocurrió un error al actualizar los residentes.",
+    });
+  }
+});
+
+router.delete("/delete-residente/:residenciaId/:residenteId", async (req, res) => {
+  const { residenciaId, residenteId } = req.params;
+
+  try {
+    const residencia = await Residencias.findById(residenciaId);
+    if (!residencia) {
+      return res.status(404).json({ error: "Residencia no encontrada." });
+    }
+
+    const residenteIndex = residencia.residentes.findIndex(
+      (r) => r._id.toString() === residenteId
+    );
+
+    if (residenteIndex === -1) {
+      return res.status(404).json({ error: "Residente no encontrado." });
+    }
+
+    await PlayerRegistry.deleteMany({ 
+      userId: residenteId
+    });
+
+    residencia.residentes.splice(residenteIndex, 1);
+    await residencia.save();
+
+    res.status(200).json({
+      success: "Residente eliminado exitosamente",
+      data: residencia,
+    });
+  } catch (error) {
+    console.error("Error al eliminar residente:", error);
+    res.status(500).json({
+      error: "Ocurrió un error al eliminar el residente.",
     });
   }
 });
