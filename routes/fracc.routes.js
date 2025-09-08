@@ -383,4 +383,33 @@ router.get("/:fraccId/residentes/inactivos",
   }
 );
 
+router.delete("/:fraccId/casas/:numero/residentes/:residenteId", 
+  validarFraccionamiento, 
+  validarCasa, 
+  async (req, res) => {
+    try {
+      const { residenteId } = req.params;
+      
+      const residenteIndex = req.casa.residentes.findIndex(r => r._id.toString() === residenteId);
+      if (residenteIndex === -1) {
+        return res.status(404).json({ error: "Residente no encontrado" });
+      }
+
+      await PlayerRegistry.deleteMany({ 
+        userId: residenteId
+      });
+
+      req.casa.residentes.splice(residenteIndex, 1);
+      await req.fraccionamiento.save();
+      
+      res.status(200).json({ 
+        message: "Residente eliminado exitosamente", 
+        fraccionamiento: req.fraccionamiento
+      });
+    } catch (error) {
+      manejarError(res, error, "Error al eliminar residente");
+    }
+  }
+);
+
 module.exports = router;
