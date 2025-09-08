@@ -121,12 +121,16 @@ router.post("/:fraccId/crear", validarFraccionamiento, async (req, res) => {
 
     const io = req.app.get('io');
     if (io) {
-      io.emit('reporteActualizado', {
+      const room = `casa_${numeroCasa}_${req.params.fraccId}`;
+      io.to(room).emit('reporteActualizado', {
         reporteId: reporteGuardado._id.toString(),
+        notificationId: reporteGuardado.notificationId,
         estatus: estatus.toUpperCase(),
         autorizadoPor: reporteGuardado.autorizadoPor,
         numeroCasa: numeroCasa,
-        timestamp: new Date()
+        fraccId: req.params.fraccId,
+        timestamp: new Date(),
+        action: 'close_modal'
       });
     }
 

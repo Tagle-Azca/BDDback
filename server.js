@@ -50,7 +50,8 @@ global.emitToHouse = (numeroCasa, fraccId, event, data) => {
 app.use(cors({
   origin: function (origin, callback) {
     const allowedOrigins = [
-      'http://localhost:3001',
+      'http://localhost:3000',
+      'http://localhost:3001', 
       'https://admin-one-livid.vercel.app'
     ];
     if (!origin || allowedOrigins.includes(origin)) {

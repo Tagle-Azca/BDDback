@@ -284,13 +284,10 @@ router.put("/:fraccId/casas/:numero/residentes/:residenteId/restablecer",
         return res.status(404).json({ error: "Residente no encontrado" });
       }
 
-      if (residente.playerId) {
-        await PlayerRegistry.deleteMany({ 
-          playerId: residente.playerId,
-          fraccId: req.fraccionamiento._id.toString(),
-          userId: residenteId 
-        });
-      }
+      // Limpiar SOLO los registros de este usuario específico (no afecta otros residentes)
+      await PlayerRegistry.deleteMany({ 
+        userId: residenteId
+      });
 
       residente.activo = true;
       residente.playerId = null;
@@ -324,19 +321,17 @@ router.put("/:fraccId/casas/:numero/residentes/:residenteId/toggle",
         return res.status(404).json({ error: "Residente no encontrado" });
       }
 
-      if (residente.activo && residente.playerId) {
+      // Limpiar SOLO los registros de este usuario específico cuando se desactiva (no afecta otros residentes)
+      if (residente.activo) {
         await PlayerRegistry.deleteMany({ 
-          playerId: residente.playerId,
-          fraccId: req.fraccionamiento._id.toString(),
-          userId: residenteId 
+          userId: residenteId
         });
       }
 
       residente.activo = !residente.activo;
       
+      // Limpiar playerId cuando se desactiva
       if (!residente.activo) {
-        residente.playerId = null;
-      } else {
         residente.playerId = null;
       }
       

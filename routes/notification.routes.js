@@ -3,6 +3,7 @@ const router = express.Router();
 const fetch = require("node-fetch");
 const PlayerRegistry = require("../models/playerRegistry");
 const Reporte = require("../models/Reportes");
+const Fraccionamiento = require("../models/fraccionamiento");
 
 router.post("/send-notification", async (req, res) => {
   try {
@@ -88,8 +89,21 @@ router.post("/send-notification", async (req, res) => {
         );
         
         if (reporteActualizado.modifiedCount > 0) {
+          if (global.io) {
+            const room = `casa_${residencia}_${fraccId}`;
+            global.io.to(room).emit('reporteActualizado', {
+              notificationId: notificationId,
+              estatus: 'EXPIRADO',
+              autorizadoPor: 'Sistema',
+              numeroCasa: residencia.toString(),
+              fraccId: fraccId.toString(),
+              timestamp: new Date(),
+              action: 'expire_modal'
+            });
+          }
         }
       } catch (error) {
+        console.error('Error expirando notificación:', error);
       }
     }, 5 * 60 * 1000);
 
@@ -111,32 +125,64 @@ router.post("/send-notification", async (req, res) => {
 
 router.post("/register", async (req, res) => {
   try {
-    const { playerId, fraccId, residencia } = req.body;
+    const { playerId, fraccId, residencia, userId } = req.body;
     
     if (!playerId || playerId.trim() === '') {
       return res.status(400).json({ error: "Player ID es requerido" });
     }
     
+    if (!userId) {
+      return res.status(400).json({ error: "User ID es requerido para autorización" });
+    }
+    
+    // 1. Validar que el usuario tiene permisos en esta casa
+    const fraccionamiento = await Fraccionamiento.findById(fraccId);
+    if (!fraccionamiento) {
+      return res.status(404).json({ error: "Fraccionamiento no encontrado" });
+    }
+    
+    const casa = fraccionamiento.residencias.find(c => c.numero.toString() === residencia.toString());
+    if (!casa) {
+      return res.status(404).json({ error: "Casa no encontrada" });
+    }
+    
+    const residente = casa.residentes.find(r => r._id.toString() === userId);
+    if (!residente) {
+      return res.status(403).json({ error: "Usuario no encontrado en esta casa" });
+    }
+    
+    if (!residente.activo) {
+      return res.status(403).json({ error: "Usuario inactivo, no puede registrar dispositivo" });
+    }
+    
+    // 2. Limpiar SOLO los registros previos de este usuario específico (no afecta otros residentes)
     await PlayerRegistry.deleteMany({ 
-      playerId: playerId, 
-      fraccId, 
-      residencia: residencia.toString()
+      userId: userId
     });
     
+    // 3. Crear nuevo registro con userId para trazabilidad
     await PlayerRegistry.create({
       playerId: playerId,                    
       fraccId: fraccId,
-      residencia: residencia.toString(),   
+      residencia: residencia.toString(),
+      userId: userId,
       createdAt: new Date()
     });
     
+    // 4. Actualizar el playerId en el modelo del residente para consistencia
+    residente.playerId = playerId;
+    await fraccionamiento.save();
+    
     res.json({ 
       success: true, 
-      message: "Dispositivo registrado exitosamente"
+      message: "Dispositivo registrado exitosamente",
+      userId: userId,
+      casa: residencia
     });
     
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('Error en registro de dispositivo:', error);
+    res.status(500).json({ error: "Error interno del servidor" });
   }
 });
 
