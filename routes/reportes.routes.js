@@ -71,9 +71,13 @@ router.post("/:fraccId/crear", validarFraccionamiento, async (req, res) => {
     if (notificationId) {
       const reporteExistente = await Reporte.findOne({ notificationId });
       if (reporteExistente) {
+        console.log(`Notificación ${notificationId} ya fue contestada por: ${reporteExistente.autorizadoPor}`);
         return res.status(409).json({ 
-          error: "Ya existe un reporte para esta notificación",
-          reporte: reporteExistente
+          error: "Esta notificación ya fue contestada por otro residente",
+          yaContestada: true,
+          reporte: reporteExistente,
+          respondidoPor: reporteExistente.autorizadoPor,
+          estatus: reporteExistente.estatus.toUpperCase()
         });
       }
     }
@@ -122,7 +126,9 @@ router.post("/:fraccId/crear", validarFraccionamiento, async (req, res) => {
     const io = req.app.get('io');
     if (io) {
       const room = `casa_${numeroCasa}_${req.params.fraccId}`;
-      io.to(room).emit('reporteActualizado', {
+      console.log(`Notificando a la casa ${numeroCasa} que ${residenteNombre || 'un residente'} ${estatus} la solicitud`);
+      
+      io.to(room).emit('notificacionContestada', {
         reporteId: reporteGuardado._id.toString(),
         notificationId: reporteGuardado.notificationId,
         estatus: estatus.toUpperCase(),
@@ -130,7 +136,10 @@ router.post("/:fraccId/crear", validarFraccionamiento, async (req, res) => {
         numeroCasa: numeroCasa,
         fraccId: req.params.fraccId,
         timestamp: new Date(),
-        action: 'close_modal'
+        action: 'notification_answered',
+        mensaje: `${residenteNombre || 'Un residente'} ${estatus === 'aceptado' ? 'aceptó' : 'rechazó'} la solicitud`,
+        visitante: reporteGuardado.nombre,
+        motivo: reporteGuardado.motivo
       });
     }
 
@@ -166,9 +175,15 @@ router.post("/:fraccId/crear", validarFraccionamiento, async (req, res) => {
 router.get("/:fraccId", async (req, res) => {
   try {
     const { fraccId } = req.params;
-    const { casa, desde, hasta, limite = 50 } = req.query;
+    const { casa, desde, hasta, limite = 50, incluirExpiradas = 'false' } = req.query;
 
     const filtro = { fraccId: fraccId };
+    
+    // Mostrar todos los reportes por defecto (incluyendo expirados)
+    // Para excluir expirados, usar ?incluirExpiradas=false
+    if (incluirExpiradas.toLowerCase() === 'false') {
+      filtro.estatus = { $nin: ['expirado'] };
+    }
     
     if (casa) filtro.numeroCasa = casa;
     if (desde) filtro.tiempo = { $gte: new Date(desde) };
@@ -200,12 +215,18 @@ router.get("/:fraccId", async (req, res) => {
 router.get("/:fraccId/casa/:numeroCasa", async (req, res) => {
   try {
     const { fraccId, numeroCasa } = req.params;
-    const { limite = 50, desde } = req.query;
+    const { limite = 50, desde, incluirExpiradas = 'false' } = req.query;
 
     const filtro = {
       fraccId: fraccId,
       numeroCasa: numeroCasa.toString()
     };
+    
+    // Mostrar todos los reportes por defecto (incluyendo expirados)
+    // Para excluir expirados, usar ?incluirExpiradas=false
+    if (incluirExpiradas.toLowerCase() === 'false') {
+      filtro.estatus = { $nin: ['expirado'] };
+    }
     
     if (desde) {
       filtro.tiempo = { $gte: new Date(desde) };

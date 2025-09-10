@@ -8,6 +8,7 @@ const PlayerRegistry = require("../models/playerRegistry");
 const { v4: uuidv4 } = require("uuid");
 const bcrypt = require("bcrypt");
 const cloudinary = require("../config/cloudinary");
+const { enviarNotificacionVisita } = require("../controllers/Visitas");
 
 const router = express.Router();
 
@@ -162,6 +163,27 @@ router.post("/:fraccId/casas", validarFraccionamiento, async (req, res) => {
   }
 });
 
+// Toggle estado del fraccionamiento completo
+router.put("/:fraccId/toggle", validarFraccionamiento, async (req, res) => {
+  try {
+    const nuevoEstado = req.fraccionamiento.estado === "activo" ? "inactivo" : "activo";
+    req.fraccionamiento.estado = nuevoEstado;
+    await req.fraccionamiento.save();
+    
+    res.status(200).json({ 
+      mensaje: `Fraccionamiento ${nuevoEstado === "activo" ? "activado" : "desactivado"} exitosamente`,
+      estado: nuevoEstado,
+      fraccionamiento: {
+        _id: req.fraccionamiento._id,
+        nombre: req.fraccionamiento.nombre,
+        estado: nuevoEstado
+      }
+    });
+  } catch (error) {
+    manejarError(res, error, "Error al actualizar estado del fraccionamiento");
+  }
+});
+
 router.put("/:fraccId/casas/:numero/toggle", validarFraccionamiento, validarCasa, async (req, res) => {
   try {
     req.casa.activa = !req.casa.activa;
@@ -231,14 +253,53 @@ router.post("/:fraccId/casas/:numero/visitas",
 
       await req.fraccionamiento.save();
 
-      res.status(201).json({ 
-        mensaje: "Visita registrada con éxito", 
-        foto: fotoUrl,
-        visitante: nombreVisitante,
-        motivo: motivo,
-        casa: req.params.numero,
-        fraccId: req.params.fraccId
-      });
+      // Enviar notificación a los residentes
+      try {
+        const resultadoNotificacion = await enviarNotificacionVisita(
+          req.params.fraccId,
+          req.params.numero,
+          nombreVisitante,
+          motivo,
+          fotoUrl
+        );
+
+        if (resultadoNotificacion.success) {
+          console.log("Notificación enviada exitosamente a los residentes");
+          res.status(201).json({ 
+            mensaje: "Visita registrada con éxito y residentes notificados", 
+            foto: fotoUrl,
+            visitante: nombreVisitante,
+            motivo: motivo,
+            casa: req.params.numero,
+            fraccId: req.params.fraccId,
+            notificacionEnviada: true
+          });
+        } else {
+          console.error("Error enviando notificación:", resultadoNotificacion.error);
+          res.status(201).json({ 
+            mensaje: "Visita registrada con éxito (error al notificar residentes)", 
+            foto: fotoUrl,
+            visitante: nombreVisitante,
+            motivo: motivo,
+            casa: req.params.numero,
+            fraccId: req.params.fraccId,
+            notificacionEnviada: false,
+            errorNotificacion: resultadoNotificacion.error
+          });
+        }
+      } catch (notificationError) {
+        console.error("Error en el proceso de notificación:", notificationError);
+        res.status(201).json({ 
+          mensaje: "Visita registrada con éxito (error al notificar residentes)", 
+          foto: fotoUrl,
+          visitante: nombreVisitante,
+          motivo: motivo,
+          casa: req.params.numero,
+          fraccId: req.params.fraccId,
+          notificacionEnviada: false,
+          errorNotificacion: notificationError.message
+        });
+      }
 
     } catch (error) {
       manejarError(res, error, "Error al registrar visita");
@@ -305,6 +366,49 @@ router.put("/:fraccId/casas/:numero/residentes/:residenteId/restablecer",
       });
     } catch (error) {
       manejarError(res, error, "Error al restablecer residente");
+    }
+  }
+);
+
+// Actualizar datos de un residente
+router.put("/:fraccId/casas/:numero/residentes/:residenteId", 
+  validarFraccionamiento, 
+  validarCasa, 
+  async (req, res) => {
+    try {
+      const { residenteId } = req.params;
+      const { nombre, relacion } = req.body;
+      
+      if (!nombre || !relacion) {
+        return res.status(400).json({ 
+          error: "Nombre y relación son campos obligatorios" 
+        });
+      }
+
+      const residente = req.casa.residentes.find(r => r._id.toString() === residenteId);
+      if (!residente) {
+        return res.status(404).json({ error: "Residente no encontrado" });
+      }
+
+      // Actualizar los datos del residente
+      residente.nombre = nombre.trim();
+      residente.relacion = relacion.trim();
+      
+      await req.fraccionamiento.save();
+
+      res.json({ 
+        success: true,
+        message: "Datos del residente actualizados exitosamente",
+        residente: {
+          _id: residente._id,
+          nombre: residente.nombre,
+          relacion: residente.relacion,
+          activo: residente.activo
+        }
+      });
+    } catch (error) {
+      console.error("Error al actualizar residente:", error);
+      manejarError(res, error, "Error al actualizar datos del residente");
     }
   }
 );

@@ -10,6 +10,26 @@ router.post("/send-notification", async (req, res) => {
     const { title, body, fraccId, residencia, foto } = req.body;
 
 
+    const fraccionamiento = await Fraccionamiento.findById(fraccId);
+    if (!fraccionamiento) {
+      return res.status(404).json({ 
+        error: "Fraccionamiento no encontrado"
+      });
+    }
+
+    const casa = fraccionamiento.residencias.find(r => r.numero.toString() === residencia.toString());
+    if (!casa) {
+      return res.status(404).json({ 
+        error: "Casa no encontrada en este fraccionamiento"
+      });
+    }
+
+    if (!casa.activa) {
+      return res.status(403).json({ 
+        error: "Casa desactivada, no puede recibir notificaciones"
+      });
+    }
+
     const playersEnCasa = await PlayerRegistry.find({ 
       fraccId: fraccId, 
       residencia: residencia.toString() 
@@ -72,40 +92,54 @@ router.post("/send-notification", async (req, res) => {
 
     setTimeout(async () => {
       try {
-        const reporteActualizado = await Reporte.updateOne(
-          { 
-            fraccId: fraccId,
-            numeroCasa: residencia.toString(),
-            notificationId: notificationId,
-            estatus: { $nin: ['aceptado', 'rechazado', 'cancelado'] }
-          },
-          { 
-            $set: { 
-              estatus: 'expirado', 
-              autorizadoPor: 'Sistema',
-              fechaAutorizacion: new Date()
-            } 
-          }
-        );
+        console.log(`Verificando si notificación ${notificationId} necesita expirar después de 5 minutos`);
         
-        if (reporteActualizado.modifiedCount > 0) {
+        // Solo verificar si existe un reporte para esta notificación
+        const reporteExistente = await Reporte.findOne({ notificationId });
+        
+        if (!reporteExistente) {
+          console.log(`Notificación ${notificationId} expiró sin respuesta - creando reporte expirado`);
+          
+          // Crear reporte expirado para mantener registro completo
+          await Reporte.create({
+            notificationId: notificationId,
+            nombre: title,
+            motivo: body,
+            foto: foto || '',
+            numeroCasa: residencia.toString(),
+            estatus: 'expirado',
+            fraccId: fraccId,
+            fechaCreacion: new Date(),
+            residenteId: null,
+            residenteNombre: 'Sistema - Expirada automáticamente',
+            autorizadoPor: 'Sistema - Expiración automática',
+            tiempo: new Date()
+          });
+          
+          // Notificar via WebSocket para cerrar modales en la app
           if (global.io) {
             const room = `casa_${residencia}_${fraccId}`;
-            global.io.to(room).emit('reporteActualizado', {
+            global.io.to(room).emit('notificacionExpirada', {
               notificationId: notificationId,
-              estatus: 'EXPIRADO',
-              autorizadoPor: 'Sistema',
+              action: 'expire_notification',
+              mensaje: 'La solicitud de acceso ha expirado por falta de respuesta',
               numeroCasa: residencia.toString(),
               fraccId: fraccId.toString(),
-              timestamp: new Date(),
-              action: 'expire_modal'
+              timestamp: new Date()
             });
           }
+        } else if (reporteExistente.estatus === 'pendiente') {
+          // Este caso no debería ocurrir, pero por seguridad
+          console.log(`Notificación ${notificationId} tiene reporte pendiente - limpiando`);
+          await Reporte.deleteOne({ _id: reporteExistente._id });
+        } else {
+          console.log(`Notificación ${notificationId} ya fue procesada como: ${reporteExistente.estatus}`);
         }
+        
       } catch (error) {
-        console.error('Error expirando notificación:', error);
+        console.error('Error verificando expiración de notificación:', error);
       }
-    }, 5 * 60 * 1000);
+    }, 5 * 60 * 1000); // 5 minutos
 
     res.json({ 
       success: true,
@@ -116,9 +150,11 @@ router.post("/send-notification", async (req, res) => {
     });
 
   } catch (error) {
+    console.error('Error en ruta send-notification:', error);
     res.status(500).json({ 
       success: false,
-      error: "Error al enviar notificación" 
+      error: "Error al enviar notificación",
+      details: error.message
     });
   }
 });
@@ -135,7 +171,6 @@ router.post("/register", async (req, res) => {
       return res.status(400).json({ error: "User ID es requerido para autorización" });
     }
     
-    // 1. Validar que el usuario tiene permisos en esta casa
     const fraccionamiento = await Fraccionamiento.findById(fraccId);
     if (!fraccionamiento) {
       return res.status(404).json({ error: "Fraccionamiento no encontrado" });
@@ -155,12 +190,10 @@ router.post("/register", async (req, res) => {
       return res.status(403).json({ error: "Usuario inactivo, no puede registrar dispositivo" });
     }
     
-    // 2. Limpiar SOLO los registros previos de este usuario específico (no afecta otros residentes)
     await PlayerRegistry.deleteMany({ 
       userId: userId
     });
     
-    // 3. Crear nuevo registro con userId para trazabilidad
     await PlayerRegistry.create({
       playerId: playerId,                    
       fraccId: fraccId,
@@ -169,7 +202,6 @@ router.post("/register", async (req, res) => {
       createdAt: new Date()
     });
     
-    // 4. Actualizar el playerId en el modelo del residente para consistencia
     residente.playerId = playerId;
     await fraccionamiento.save();
     
