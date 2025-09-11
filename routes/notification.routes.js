@@ -53,7 +53,38 @@ router.post("/send-notification", async (req, res) => {
       });
     }
 
-    const notificationId = `${fraccId}_${residencia}_${Date.now()}`;
+    // Generar ID basado en casa y contenido para evitar duplicados en ventana de tiempo
+    const contentHash = Buffer.from(`${title}-${body}`).toString('base64').substring(0, 8);
+    const timeWindow = Math.floor(Date.now() / (30 * 1000)); // Ventana de 30 segundos
+    const notificationId = `${fraccId}_${residencia}_${timeWindow}_${contentHash}`;
+
+    // Crear reporte pendiente inmediatamente para evitar duplicados (con manejo de duplicados)
+    try {
+      await Reporte.create({
+        notificationId: notificationId,
+        nombre: title,
+        motivo: body,
+        foto: foto || '',
+        numeroCasa: residencia.toString(),
+        estatus: 'pendiente',
+        fraccId: fraccId,
+        fechaCreacion: new Date(),
+        residenteId: null,
+        residenteNombre: 'Pendiente de respuesta',
+        autorizadoPor: 'Sistema - Notificación enviada',
+        tiempo: new Date()
+      });
+    } catch (error) {
+      // Si ya existe (error de clave duplicada), retornar conflicto
+      if (error.code === 11000) {
+        return res.status(409).json({ 
+          success: false,
+          error: "Ya existe una notificación pendiente para esta casa con el mismo visitante",
+          notificationId: notificationId
+        });
+      }
+      throw error; // Re-lanzar otros errores
+    }
 
     const payload = {
       app_id: process.env.ONESIGNAL_APP_ID,
@@ -88,13 +119,11 @@ router.post("/send-notification", async (req, res) => {
     });
 
     const resultado = await response.json();
-    
 
     setTimeout(async () => {
       try {
         console.log(`Verificando si notificación ${notificationId} necesita expirar después de 5 minutos`);
         
-        // Solo verificar si existe un reporte para esta notificación
         const reporteExistente = await Reporte.findOne({ notificationId });
         
         if (!reporteExistente) {
@@ -116,7 +145,6 @@ router.post("/send-notification", async (req, res) => {
             tiempo: new Date()
           });
           
-          // Notificar via WebSocket para cerrar modales en la app
           if (global.io) {
             const room = `casa_${residencia}_${fraccId}`;
             global.io.to(room).emit('notificacionExpirada', {
@@ -129,7 +157,6 @@ router.post("/send-notification", async (req, res) => {
             });
           }
         } else if (reporteExistente.estatus === 'pendiente') {
-          // Este caso no debería ocurrir, pero por seguridad
           console.log(`Notificación ${notificationId} tiene reporte pendiente - limpiando`);
           await Reporte.deleteOne({ _id: reporteExistente._id });
         } else {
@@ -139,7 +166,7 @@ router.post("/send-notification", async (req, res) => {
       } catch (error) {
         console.error('Error verificando expiración de notificación:', error);
       }
-    }, 5 * 60 * 1000); // 5 minutos
+    }, 5 * 60 * 1000);
 
     res.json({ 
       success: true,
