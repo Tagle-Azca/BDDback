@@ -53,12 +53,34 @@ router.post("/send-notification", async (req, res) => {
       });
     }
 
-    // Generar ID basado en casa y contenido para evitar duplicados en ventana de tiempo
-    const contentHash = Buffer.from(`${title}-${body}`).toString('base64').substring(0, 8);
-    const timeWindow = Math.floor(Date.now() / (30 * 1000)); // Ventana de 30 segundos
-    const notificationId = `${fraccId}_${residencia}_${timeWindow}_${contentHash}`;
+    // Verificar límite de frecuencia por visitante específico (solo pendientes)
+    const cincoMinutosAtras = new Date(Date.now() - 5 * 60 * 1000);
+    const solicitudesPendientes = await Reporte.find({
+      fraccId: fraccId,
+      numeroCasa: residencia.toString(),
+      nombre: title, // Mismo visitante
+      estatus: 'pendiente', // Solo contar las pendientes
+      fechaCreacion: { $gte: cincoMinutosAtras }
+    }).sort({ fechaCreacion: -1 });
 
-    // Crear reporte pendiente inmediatamente para evitar duplicados (con manejo de duplicados)
+    console.log(`🔍 ${title} tiene ${solicitudesPendientes.length} solicitudes PENDIENTES en los últimos 5 minutos`);
+
+    // Límite: máximo 3 visitas PENDIENTES del MISMO visitante en 5 minutos
+    if (solicitudesPendientes.length >= 3) {
+      return res.status(429).json({
+        success: false,
+        error: `${title} ya tiene ${solicitudesPendientes.length} solicitudes pendientes. Espere a que sean procesadas.`,
+        nextAllowedTime: new Date(Date.now() + (5 * 60 * 1000)),
+        currentCount: solicitudesPendientes.length
+      });
+    }
+
+    // Generar ID único por casa, visitante y timestamp
+    const timestamp = Date.now();
+    const visitorHash = Buffer.from(title).toString('base64').substring(0, 6);
+    const notificationId = `${fraccId}_${residencia}_${visitorHash}_${timestamp}`;
+
+    // Crear reporte pendiente para esta visita específica
     try {
       await Reporte.create({
         notificationId: notificationId,
@@ -75,15 +97,15 @@ router.post("/send-notification", async (req, res) => {
         tiempo: new Date()
       });
     } catch (error) {
-      // Si ya existe (error de clave duplicada), retornar conflicto
+      // Si hay error de clave duplicada (muy improbable con timestamp)
       if (error.code === 11000) {
         return res.status(409).json({ 
           success: false,
-          error: "Ya existe una notificación pendiente para esta casa con el mismo visitante",
+          error: "Error al procesar la solicitud, intente nuevamente",
           notificationId: notificationId
         });
       }
-      throw error; // Re-lanzar otros errores
+      throw error;
     }
 
     const payload = {
@@ -281,6 +303,99 @@ router.delete("/clear/:fraccId/:residencia", async (req, res) => {
     res.json({
       mensaje: "Registros eliminados",
       eliminados: deleted.deletedCount
+    });
+    
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Nuevo endpoint para verificar y limpiar Player IDs fantasma
+router.get("/audit/:fraccId/:residencia", async (req, res) => {
+  try {
+    const { fraccId, residencia } = req.params;
+    
+    // Obtener fraccionamiento y casa
+    const fraccionamiento = await Fraccionamiento.findById(fraccId);
+    if (!fraccionamiento) {
+      return res.status(404).json({ error: "Fraccionamiento no encontrado" });
+    }
+
+    const casa = fraccionamiento.residencias.find(r => r.numero.toString() === residencia.toString());
+    if (!casa) {
+      return res.status(404).json({ error: "Casa no encontrada" });
+    }
+
+    // Obtener Player IDs registrados
+    const playersRegistrados = await PlayerRegistry.find({ 
+      fraccId: fraccId, 
+      residencia: residencia.toString() 
+    });
+
+    // Obtener residentes activos con Player ID
+    const residentesActivos = casa.residentes.filter(r => r.activo && r.playerId);
+    const playerIdsValidos = residentesActivos.map(r => r.playerId);
+
+    // Identificar Player IDs fantasma
+    const playersFantasma = playersRegistrados.filter(p => 
+      !playerIdsValidos.includes(p.playerId)
+    );
+
+    res.json({
+      casa: residencia,
+      residentesActivos: residentesActivos.length,
+      playerIdsRegistrados: playersRegistrados.length,
+      playerIdsValidos: playerIdsValidos.length,
+      playerIdsFantasma: playersFantasma.length,
+      detalles: {
+        residentes: residentesActivos.map(r => ({
+          nombre: r.nombre,
+          playerId: r.playerId
+        })),
+        playersFantasma: playersFantasma.map(p => ({
+          playerId: p.playerId,
+          createdAt: p.createdAt,
+          userId: p.userId
+        }))
+      }
+    });
+    
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Endpoint para limpiar Player IDs fantasma
+router.delete("/clean-phantom/:fraccId/:residencia", async (req, res) => {
+  try {
+    const { fraccId, residencia } = req.params;
+    
+    // Obtener fraccionamiento y casa
+    const fraccionamiento = await Fraccionamiento.findById(fraccId);
+    if (!fraccionamiento) {
+      return res.status(404).json({ error: "Fraccionamiento no encontrado" });
+    }
+
+    const casa = fraccionamiento.residencias.find(r => r.numero.toString() === residencia.toString());
+    if (!casa) {
+      return res.status(404).json({ error: "Casa no encontrada" });
+    }
+
+    // Obtener Player IDs válidos
+    const residentesActivos = casa.residentes.filter(r => r.activo && r.playerId);
+    const playerIdsValidos = residentesActivos.map(r => r.playerId);
+
+    // Eliminar Player IDs fantasma
+    const deleted = await PlayerRegistry.deleteMany({ 
+      fraccId: fraccId, 
+      residencia: residencia.toString(),
+      playerId: { $nin: playerIdsValidos }
+    });
+    
+    res.json({
+      mensaje: "Player IDs fantasma eliminados",
+      eliminados: deleted.deletedCount,
+      playerIdsValidos: playerIdsValidos
     });
     
   } catch (error) {
