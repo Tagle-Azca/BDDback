@@ -30,20 +30,16 @@ router.post("/send-notification", async (req, res) => {
       });
     }
 
-    const playersEnCasa = await PlayerRegistry.find({ 
-      fraccId: fraccId, 
-      residencia: residencia.toString() 
-    });
+    const residentesActivos = casa.residentes.filter(r => r.activo && r.playerId);
 
-
-    if (playersEnCasa.length === 0) {
-      return res.status(400).json({ 
+    if (residentesActivos.length === 0) {
+      return res.status(400).json({
         error: "No hay dispositivos registrados en esta casa"
       });
     }
 
-    const playerIds = [...new Set(playersEnCasa
-      .map(player => player.playerId)
+    const playerIds = [...new Set(residentesActivos
+      .map(residente => residente.playerId)
       .filter(id => id && id.trim() !== ''))];
 
 
