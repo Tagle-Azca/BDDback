@@ -107,7 +107,7 @@ router.post("/send-notification", async (req, res) => {
       content_available: true,
       ios_sound: "default",
       android_sound: "default",
-      collapse_id: notificationId, // Agrupa notificaciones con el mismo ID
+      collapse_id: notificationId,
       data: {
       notificationId,
       fraccId: fraccId.toString(),
@@ -134,13 +134,10 @@ router.post("/send-notification", async (req, res) => {
 
     setTimeout(async () => {
       try {
-        console.log(`Verificando si notificación ${notificationId} necesita expirar después de 5 minutos`);
         
         const reporteExistente = await Reporte.findOne({ notificationId });
         
         if (!reporteExistente) {
-          console.log(`Notificación ${notificationId} expiró sin respuesta - creando reporte expirado`);
-
           await Reporte.create({
             notificationId: notificationId,
             nombre: title,
