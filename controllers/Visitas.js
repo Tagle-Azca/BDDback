@@ -20,8 +20,7 @@ const enviarNotificacionVisita = async (fraccId, residencia, nombre, motivo, fot
       return { success: false, error: "Casa desactivada" };
     }
 
-    // URL corregida con 's' en notifications
-    const notificationUrl = process.env.NODE_ENV === 'production' 
+    const notificationUrl = process.env.NODE_ENV === 'production'
       ? "https://ingresosbackend.onrender.com/api/notifications/send-notification"
       : "http://localhost:5002/api/notifications/send-notification";
     

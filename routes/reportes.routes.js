@@ -178,9 +178,7 @@ router.get("/:fraccId", async (req, res) => {
     const { casa, desde, hasta, limite = 50, incluirExpiradas = 'false' } = req.query;
 
     const filtro = { fraccId: fraccId };
-    
-    // Mostrar todos los reportes por defecto (incluyendo expirados)
-    // Para excluir expirados, usar ?incluirExpiradas=false
+
     if (incluirExpiradas.toLowerCase() === 'false') {
       filtro.estatus = { $nin: ['expirado'] };
     }
@@ -221,9 +219,6 @@ router.get("/:fraccId/casa/:numeroCasa", async (req, res) => {
       fraccId: fraccId,
       numeroCasa: numeroCasa.toString()
     };
-    
-    // Mostrar todos los reportes por defecto (incluyendo expirados)
-    // Para excluir expirados, usar ?incluirExpiradas=false
     if (incluirExpiradas.toLowerCase() === 'false') {
       filtro.estatus = { $nin: ['expirado'] };
     }

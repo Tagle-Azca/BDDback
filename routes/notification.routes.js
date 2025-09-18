@@ -53,19 +53,17 @@ router.post("/send-notification", async (req, res) => {
       });
     }
 
-    // Verificar límite de frecuencia por visitante específico (solo pendientes)
     const cincoMinutosAtras = new Date(Date.now() - 5 * 60 * 1000);
     const solicitudesPendientes = await Reporte.find({
       fraccId: fraccId,
       numeroCasa: residencia.toString(),
-      nombre: title, // Mismo visitante
-      estatus: 'pendiente', // Solo contar las pendientes
+      nombre: title,
+      estatus: 'pendiente',
       fechaCreacion: { $gte: cincoMinutosAtras }
     }).sort({ fechaCreacion: -1 });
 
     console.log(`🔍 ${title} tiene ${solicitudesPendientes.length} solicitudes PENDIENTES en los últimos 5 minutos`);
 
-    // Límite: máximo 3 visitas PENDIENTES del MISMO visitante en 5 minutos
     if (solicitudesPendientes.length >= 3) {
       return res.status(429).json({
         success: false,
@@ -74,13 +72,9 @@ router.post("/send-notification", async (req, res) => {
         currentCount: solicitudesPendientes.length
       });
     }
-
-    // Generar ID único por casa, visitante y timestamp
     const timestamp = Date.now();
     const visitorHash = Buffer.from(title).toString('base64').substring(0, 6);
     const notificationId = `${fraccId}_${residencia}_${visitorHash}_${timestamp}`;
-
-    // Crear reporte pendiente para esta visita específica
     try {
       await Reporte.create({
         notificationId: notificationId,
@@ -97,9 +91,8 @@ router.post("/send-notification", async (req, res) => {
         tiempo: new Date()
       });
     } catch (error) {
-      // Si hay error de clave duplicada (muy improbable con timestamp)
       if (error.code === 11000) {
-        return res.status(409).json({ 
+        return res.status(409).json({
           success: false,
           error: "Error al procesar la solicitud, intente nuevamente",
           notificationId: notificationId
@@ -150,8 +143,7 @@ router.post("/send-notification", async (req, res) => {
         
         if (!reporteExistente) {
           console.log(`Notificación ${notificationId} expiró sin respuesta - creando reporte expirado`);
-          
-          // Crear reporte expirado para mantener registro completo
+
           await Reporte.create({
             notificationId: notificationId,
             nombre: title,
@@ -179,10 +171,7 @@ router.post("/send-notification", async (req, res) => {
             });
           }
         } else if (reporteExistente.estatus === 'pendiente') {
-          console.log(`Notificación ${notificationId} tiene reporte pendiente - limpiando`);
           await Reporte.deleteOne({ _id: reporteExistente._id });
-        } else {
-          console.log(`Notificación ${notificationId} ya fue procesada como: ${reporteExistente.estatus}`);
         }
         
       } catch (error) {
@@ -310,12 +299,10 @@ router.delete("/clear/:fraccId/:residencia", async (req, res) => {
   }
 });
 
-// Nuevo endpoint para verificar y limpiar Player IDs fantasma
 router.get("/audit/:fraccId/:residencia", async (req, res) => {
   try {
     const { fraccId, residencia } = req.params;
-    
-    // Obtener fraccionamiento y casa
+
     const fraccionamiento = await Fraccionamiento.findById(fraccId);
     if (!fraccionamiento) {
       return res.status(404).json({ error: "Fraccionamiento no encontrado" });
@@ -326,18 +313,15 @@ router.get("/audit/:fraccId/:residencia", async (req, res) => {
       return res.status(404).json({ error: "Casa no encontrada" });
     }
 
-    // Obtener Player IDs registrados
-    const playersRegistrados = await PlayerRegistry.find({ 
-      fraccId: fraccId, 
-      residencia: residencia.toString() 
+    const playersRegistrados = await PlayerRegistry.find({
+      fraccId: fraccId,
+      residencia: residencia.toString()
     });
 
-    // Obtener residentes activos con Player ID
     const residentesActivos = casa.residentes.filter(r => r.activo && r.playerId);
     const playerIdsValidos = residentesActivos.map(r => r.playerId);
 
-    // Identificar Player IDs fantasma
-    const playersFantasma = playersRegistrados.filter(p => 
+    const playersFantasma = playersRegistrados.filter(p =>
       !playerIdsValidos.includes(p.playerId)
     );
 
@@ -365,12 +349,10 @@ router.get("/audit/:fraccId/:residencia", async (req, res) => {
   }
 });
 
-// Endpoint para limpiar Player IDs fantasma
 router.delete("/clean-phantom/:fraccId/:residencia", async (req, res) => {
   try {
     const { fraccId, residencia } = req.params;
-    
-    // Obtener fraccionamiento y casa
+
     const fraccionamiento = await Fraccionamiento.findById(fraccId);
     if (!fraccionamiento) {
       return res.status(404).json({ error: "Fraccionamiento no encontrado" });
@@ -381,13 +363,11 @@ router.delete("/clean-phantom/:fraccId/:residencia", async (req, res) => {
       return res.status(404).json({ error: "Casa no encontrada" });
     }
 
-    // Obtener Player IDs válidos
     const residentesActivos = casa.residentes.filter(r => r.activo && r.playerId);
     const playerIdsValidos = residentesActivos.map(r => r.playerId);
 
-    // Eliminar Player IDs fantasma
-    const deleted = await PlayerRegistry.deleteMany({ 
-      fraccId: fraccId, 
+    const deleted = await PlayerRegistry.deleteMany({
+      fraccId: fraccId,
       residencia: residencia.toString(),
       playerId: { $nin: playerIdsValidos }
     });

@@ -129,4 +129,80 @@ router.delete("/delete-residente/:residenciaId/:residenteId", async (req, res) =
   }
 });
 
+router.get("/validate-user/:userId", async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { fraccId, casa } = req.query;
+
+    if (!fraccId || !casa) {
+      return res.status(400).json({
+        error: "fraccId y casa son requeridos"
+      });
+    }
+
+    const Fraccionamiento = require("../models/fraccionamiento");
+    const fraccionamiento = await Fraccionamiento.findById(fraccId);
+
+    if (!fraccionamiento) {
+      return res.status(200).json({
+        exists: false,
+        active: false,
+        reason: "Fraccionamiento no encontrado"
+      });
+    }
+
+    const residencia = fraccionamiento.residencias.find(r =>
+      r.numero.toString() === casa.toString()
+    );
+
+    if (!residencia || !residencia.activa) {
+      return res.status(200).json({
+        exists: false,
+        active: false,
+        reason: "Casa no encontrada o inactiva"
+      });
+    }
+
+    const residente = residencia.residentes.find(r =>
+      r._id.toString() === userId
+    );
+
+    if (!residente) {
+      return res.status(200).json({
+        exists: false,
+        active: false,
+        reason: "Residente no encontrado"
+      });
+    }
+
+    if (!residente.activo) {
+      return res.status(200).json({
+        exists: true,
+        active: false,
+        reason: "Residente inactivo"
+      });
+    }
+
+    return res.status(200).json({
+      exists: true,
+      active: true,
+      userData: {
+        nombre: residente.nombre,
+        telefono: residente.telefono,
+        fraccId: fraccId,
+        residencia: casa,
+        residenteId: userId
+      }
+    });
+
+  } catch (error) {
+    console.error("Error validando usuario:", error);
+    return res.status(500).json({
+      exists: false,
+      active: false,
+      reason: "Error del servidor"
+    });
+  }
+});
+
 module.exports = router;
