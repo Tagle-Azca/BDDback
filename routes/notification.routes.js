@@ -107,13 +107,14 @@ router.post("/send-notification", async (req, res) => {
       content_available: true,
       ios_sound: "default",
       android_sound: "default",
-      data: { 
+      collapse_id: notificationId, // Agrupa notificaciones con el mismo ID
+      data: {
       notificationId,
-      fraccId: fraccId.toString(),      
-      residencia: residencia.toString(), 
-      foto, 
-      nombre: title, 
-      motivo: body, 
+      fraccId: fraccId.toString(),
+      residencia: residencia.toString(),
+      foto,
+      nombre: title,
+      motivo: body,
       tipo: 'solicitud_acceso',
       timestamp: Date.now().toString()
     }

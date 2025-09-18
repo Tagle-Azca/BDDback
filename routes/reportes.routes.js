@@ -141,6 +141,9 @@ router.post("/:fraccId/crear", validarFraccionamiento, async (req, res) => {
         visitante: reporteGuardado.nombre,
         motivo: reporteGuardado.motivo
       });
+
+      // También enviar notificación push silenciosa para retirar banners
+      await enviarNotificacionRetiroBanner(req.params.fraccId, numeroCasa, reporteGuardado.notificationId, estatus, residenteNombre);
     }
 
     if (estatus.toLowerCase() === 'aceptado') {
@@ -307,5 +310,56 @@ router.put("/reporte/:reporteId", async (req, res) => {
     manejarError(res, error, "Error al actualizar reporte");
   }
 });
+
+async function enviarNotificacionRetiroBanner(fraccId, numeroCasa, notificationId, estatus, residenteNombre) {
+  try {
+    const Fraccionamiento = require("../models/fraccionamiento");
+    const fraccionamiento = await Fraccionamiento.findById(fraccId);
+
+    if (!fraccionamiento) return;
+
+    const casa = fraccionamiento.residencias.find(r => r.numero.toString() === numeroCasa.toString());
+    if (!casa) return;
+
+    const residentesActivos = casa.residentes.filter(r => r.activo && r.playerId);
+    if (residentesActivos.length === 0) return;
+
+    const playerIds = [...new Set(residentesActivos
+      .map(residente => residente.playerId)
+      .filter(id => id && id.trim() !== ''))];
+
+    if (playerIds.length === 0) return;
+
+    const payload = {
+      app_id: process.env.ONESIGNAL_APP_ID,
+      include_player_ids: playerIds,
+      content_available: true,
+      priority: 10,
+      data: {
+        type: 'banner_removal',
+        notificationId: notificationId,
+        estatus: estatus,
+        autorizadoPor: residenteNombre,
+        action: 'remove_notification_banner',
+        timestamp: Date.now().toString()
+      }
+    };
+
+    const response = await fetch("https://onesignal.com/api/v1/notifications", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Basic ${process.env.ONESIGNAL_API_KEY}`
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const result = await response.json();
+    console.log(`🗑️ Notificación de retiro de banner enviada: ${result.id} - ${playerIds.length} dispositivos`);
+
+  } catch (error) {
+    console.error('Error enviando notificación de retiro de banner:', error);
+  }
+}
 
 module.exports = router;
