@@ -7,6 +7,7 @@ const socketIo = require("socket.io");
 
 const residenciasRoutes = require("./routes/residencias.routes");
 const authRoutes = require("./routes/adminAuth.routes");
+const userAuthRoutes = require("./routes/auth.routes");
 const fraccRoutes = require("./routes/fracc.routes");
 const reportesRoutes = require("./routes/reportes.routes");
 const notificationRoutes = require("./routes/notification.routes");
@@ -83,6 +84,7 @@ mongoose
 global.latestNotification = null;
 
 app.use("/api/auth", authRoutes);
+app.use("/api/user-auth", userAuthRoutes);
 app.use("/api/fraccionamientos", fraccRoutes);
 app.use("/api/residencias", residenciasRoutes);
 app.use("/api/reportes", reportesRoutes);

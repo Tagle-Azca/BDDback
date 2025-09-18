@@ -499,15 +499,27 @@ router.delete("/:fraccId/casas/:numero/residentes/:residenteId",
         return res.status(404).json({ error: "Residente no encontrado" });
       }
 
-      await PlayerRegistry.deleteMany({ 
+      // Obtener datos del residente antes de eliminarlo
+      const residenteEliminado = req.casa.residentes[residenteIndex];
+
+      await PlayerRegistry.deleteMany({
         userId: residenteId
       });
 
+      // Invalidar tokens del usuario eliminado
+      const { invalidateUserTokens } = require('../middleware/tokenAuth');
+      await invalidateUserTokens(residenteId, req.fraccionamiento._id, req.casa.numero);
+
+      // Enviar notificación de expulsión si tiene playerId
+      if (residenteEliminado.playerId) {
+        await enviarNotificacionExpulsion(residenteEliminado.playerId, residenteEliminado.nombre);
+      }
+
       req.casa.residentes.splice(residenteIndex, 1);
       await req.fraccionamiento.save();
-      
-      res.status(200).json({ 
-        message: "Residente eliminado exitosamente", 
+
+      res.status(200).json({
+        message: "Residente eliminado exitosamente",
         fraccionamiento: req.fraccionamiento
       });
     } catch (error) {
@@ -515,5 +527,39 @@ router.delete("/:fraccId/casas/:numero/residentes/:residenteId",
     }
   }
 );
+
+// Función para enviar notificación de expulsión
+async function enviarNotificacionExpulsion(playerId, nombreResidente) {
+  try {
+    const payload = {
+      app_id: process.env.ONESIGNAL_APP_ID,
+      include_player_ids: [playerId],
+      data: {
+        type: 'force_logout',
+        action: 'logout_user',
+        message: 'Tu acceso ha sido revocado por el administrador',
+        timestamp: Date.now().toString()
+      },
+      // Notificación silenciosa para no molestar al usuario
+      content_available: true,
+      priority: 10
+    };
+
+    const response = await fetch("https://onesignal.com/api/v1/notifications", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Basic ${process.env.ONESIGNAL_API_KEY}`
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const result = await response.json();
+    console.log(`🚫 Notificación de expulsión enviada a ${nombreResidente}: ${result.id}`);
+
+  } catch (error) {
+    console.error('Error enviando notificación de expulsión:', error);
+  }
+}
 
 module.exports = router;
