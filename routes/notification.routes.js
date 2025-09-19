@@ -49,53 +49,30 @@ router.post("/send-notification", async (req, res) => {
       });
     }
 
+    // Verificar reportes recientes (aceptados/rechazados) para evitar spam
     const cincoMinutosAtras = new Date(Date.now() - 5 * 60 * 1000);
-    const solicitudesPendientes = await Reporte.find({
+    const reportesRecientes = await Reporte.find({
       fraccId: fraccId,
       numeroCasa: residencia.toString(),
       nombre: title,
-      estatus: 'pendiente',
-      fechaCreacion: { $gte: cincoMinutosAtras }
-    }).sort({ fechaCreacion: -1 });
+      tiempo: { $gte: cincoMinutosAtras }
+    }).sort({ tiempo: -1 });
 
-    console.log(`🔍 ${title} tiene ${solicitudesPendientes.length} solicitudes PENDIENTES en los últimos 5 minutos`);
+    console.log(`🔍 ${title} tiene ${reportesRecientes.length} reportes recientes en los últimos 5 minutos`);
 
-    if (solicitudesPendientes.length >= 3) {
+    if (reportesRecientes.length >= 3) {
       return res.status(429).json({
         success: false,
-        error: `${title} ya tiene ${solicitudesPendientes.length} solicitudes pendientes. Espere a que sean procesadas.`,
+        error: `${title} ya tiene ${reportesRecientes.length} solicitudes recientes. Espere antes de enviar otra.`,
         nextAllowedTime: new Date(Date.now() + (5 * 60 * 1000)),
-        currentCount: solicitudesPendientes.length
+        currentCount: reportesRecientes.length
       });
     }
     const timestamp = Date.now();
     const visitorHash = Buffer.from(title).toString('base64').substring(0, 6);
     const notificationId = `${fraccId}_${residencia}_${visitorHash}_${timestamp}`;
-    try {
-      await Reporte.create({
-        notificationId: notificationId,
-        nombre: title,
-        motivo: body,
-        foto: foto || '',
-        numeroCasa: residencia.toString(),
-        estatus: 'pendiente',
-        fraccId: fraccId,
-        fechaCreacion: new Date(),
-        residenteId: null,
-        residenteNombre: 'Pendiente de respuesta',
-        autorizadoPor: 'Sistema - Notificación enviada',
-        tiempo: new Date()
-      });
-    } catch (error) {
-      if (error.code === 11000) {
-        return res.status(409).json({
-          success: false,
-          error: "Error al procesar la solicitud, intente nuevamente",
-          notificationId: notificationId
-        });
-      }
-      throw error;
-    }
+    // NO creamos reporte hasta que haya una respuesta definitiva
+    // Solo enviamos la notificación
 
     const payload = {
       app_id: process.env.ONESIGNAL_APP_ID,
@@ -134,10 +111,11 @@ router.post("/send-notification", async (req, res) => {
 
     setTimeout(async () => {
       try {
-        
+        // Verificar si ya existe un reporte (respuesta) para esta notificación
         const reporteExistente = await Reporte.findOne({ notificationId });
-        
+
         if (!reporteExistente) {
+          // Si no hay respuesta después de 5 minutos, crear reporte como expirado
           await Reporte.create({
             notificationId: notificationId,
             nombre: title,
@@ -152,7 +130,7 @@ router.post("/send-notification", async (req, res) => {
             autorizadoPor: 'Sistema - Expiración automática',
             tiempo: new Date()
           });
-          
+
           if (global.io) {
             const room = `casa_${residencia}_${fraccId}`;
             global.io.to(room).emit('notificacionExpirada', {
@@ -164,10 +142,9 @@ router.post("/send-notification", async (req, res) => {
               timestamp: new Date()
             });
           }
-        } else if (reporteExistente.estatus === 'pendiente') {
-          await Reporte.deleteOne({ _id: reporteExistente._id });
         }
-        
+        // Si ya existe reporte, significa que ya fue respondida, no hacer nada
+
       } catch (error) {
         console.error('Error verificando expiración de notificación:', error);
       }
