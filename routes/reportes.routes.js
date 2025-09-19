@@ -143,6 +143,7 @@ router.post("/:fraccId/crear", validarFraccionamiento, async (req, res) => {
       });
 
       // También enviar notificación push silenciosa para retirar banners
+      console.log(`🚀 Enviando retiro de banner: Casa ${numeroCasa}, NotificationId: ${reporteGuardado.notificationId}, Estatus: ${estatus}`);
       await enviarNotificacionRetiroBanner(req.params.fraccId, numeroCasa, reporteGuardado.notificationId, estatus, residenteNombre);
     }
 
@@ -328,7 +329,13 @@ async function enviarNotificacionRetiroBanner(fraccId, numeroCasa, notificationI
       .map(residente => residente.playerId)
       .filter(id => id && id.trim() !== ''))];
 
-    if (playerIds.length === 0) return;
+    console.log(`🔍 Casa ${numeroCasa}: ${residentesActivos.length} residentes activos, ${playerIds.length} Player IDs únicos`);
+    console.log(`🔍 Player IDs: ${playerIds.join(', ')}`);
+
+    if (playerIds.length === 0) {
+      console.log('❌ No hay Player IDs válidos para enviar retiro de banner');
+      return;
+    }
 
     const payload = {
       app_id: process.env.ONESIGNAL_APP_ID,
