@@ -347,7 +347,9 @@ async function enviarNotificacionRetiroBanner(fraccId, numeroCasa, notificationI
       silent: true,
       data: {
         type: 'banner_removal',
+        tipo: 'banner_removal',
         notificationId: notificationId,
+        notification_id: notificationId,
         estatus: estatus,
         autorizadoPor: residenteNombre,
         action: 'remove_notification_banner',
