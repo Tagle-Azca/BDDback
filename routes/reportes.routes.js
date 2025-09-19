@@ -340,8 +340,11 @@ async function enviarNotificacionRetiroBanner(fraccId, numeroCasa, notificationI
     const payload = {
       app_id: process.env.ONESIGNAL_APP_ID,
       include_player_ids: playerIds,
+      contents: { "en": "Banner removal" },
+      headings: { "en": "Notification Update" },
       content_available: true,
       priority: 10,
+      silent: true,
       data: {
         type: 'banner_removal',
         notificationId: notificationId,
@@ -349,7 +352,10 @@ async function enviarNotificacionRetiroBanner(fraccId, numeroCasa, notificationI
         autorizadoPor: residenteNombre,
         action: 'remove_notification_banner',
         timestamp: Date.now().toString()
-      }
+      },
+      ios_sound: "",
+      android_channel_id: "silent_notifications",
+      mutable_content: true
     };
 
     const response = await fetch("https://onesignal.com/api/v1/notifications", {
