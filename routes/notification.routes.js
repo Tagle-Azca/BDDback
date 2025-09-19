@@ -142,6 +142,10 @@ router.post("/send-notification", async (req, res) => {
               timestamp: new Date()
             });
           }
+
+          // También enviar notificación push silenciosa para retirar banners cuando expira
+          const { enviarNotificacionRetiroBanner } = require('./reportes.routes');
+          await enviarNotificacionRetiroBanner(fraccId, residencia, notificationId, 'expirado', 'Sistema');
         }
         // Si ya existe reporte, significa que ya fue respondida, no hacer nada
 

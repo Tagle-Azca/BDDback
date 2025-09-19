@@ -363,3 +363,4 @@ async function enviarNotificacionRetiroBanner(fraccId, numeroCasa, notificationI
 }
 
 module.exports = router;
+module.exports.enviarNotificacionRetiroBanner = enviarNotificacionRetiroBanner;
