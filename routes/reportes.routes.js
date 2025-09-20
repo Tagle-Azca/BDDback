@@ -142,9 +142,8 @@ router.post("/:fraccId/crear", validarFraccionamiento, async (req, res) => {
         motivo: reporteGuardado.motivo
       });
 
-      // También enviar notificación push silenciosa para retirar banners
-      console.log(`🚀 Enviando retiro de banner: Casa ${numeroCasa}, NotificationId: ${reporteGuardado.notificationId}, Estatus: ${estatus}`);
-      await enviarNotificacionRetiroBanner(req.params.fraccId, numeroCasa, reporteGuardado.notificationId, estatus, residenteNombre);
+      // ✅ Banner removal ahora se maneja 100% vía WebSocket
+      // OneSignal solo se usa para enviar notificaciones iniciales
     }
 
     if (estatus.toLowerCase() === 'aceptado') {
@@ -329,11 +328,11 @@ async function enviarNotificacionRetiroBanner(fraccId, numeroCasa, notificationI
       .map(residente => residente.playerId)
       .filter(id => id && id.trim() !== ''))];
 
-    console.log(`🔍 Casa ${numeroCasa}: ${residentesActivos.length} residentes activos, ${playerIds.length} Player IDs únicos`);
-    console.log(`🔍 Player IDs: ${playerIds.join(', ')}`);
+    console.log(`Casa ${numeroCasa}: ${residentesActivos.length} residentes activos, ${playerIds.length} Player IDs únicos`);
+    console.log(`Player IDs: ${playerIds.join(', ')}`);
 
     if (playerIds.length === 0) {
-      console.log('❌ No hay Player IDs válidos para enviar retiro de banner');
+      console.log('No hay Player IDs válidos para enviar retiro de banner');
       return;
     }
 
