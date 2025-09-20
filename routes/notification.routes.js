@@ -143,9 +143,8 @@ router.post("/send-notification", async (req, res) => {
             });
           }
 
-          // También enviar notificación push silenciosa para retirar banners cuando expira
-          const { enviarNotificacionRetiroBanner } = require('./reportes.routes');
-          await enviarNotificacionRetiroBanner(fraccId, residencia, notificationId, 'expirado', 'Sistema');
+          // ✅ Banner removal para expiración también se maneja 100% vía WebSocket
+          // OneSignal solo se usa para enviar notificaciones iniciales
         }
         // Si ya existe reporte, significa que ya fue respondida, no hacer nada
 
