@@ -6,7 +6,6 @@ const ONESIGNAL_API_KEY = process.env.ONESIGNAL_API_KEY?.trim();
 
 async function sendNotification(notificationData) {
   try {
-    console.log('Enviando notificación con datos:', JSON.stringify(notificationData, null, 2));
     
     if (!ONESIGNAL_APP_ID || !ONESIGNAL_API_KEY) {
       throw new Error('Variables de OneSignal no configuradas correctamente');
@@ -24,13 +23,8 @@ async function sendNotification(notificationData) {
       }
     });
 
-    console.log('Respuesta de OneSignal:', JSON.stringify(response.data, null, 2));
     return response.data;
   } catch (error) {
-    console.error('Error enviando notificación OneSignal:', error.message);
-    if (error.response) {
-      console.error('Respuesta de error:', error.response.data);
-    }
     throw error;
   }
 }

@@ -2,12 +2,10 @@ const UserToken = require('../models/userToken');
 const Fraccionamiento = require('../models/fraccionamiento');
 const crypto = require('crypto');
 
-// Genera un token seguro
 function generateSecureToken() {
   return crypto.randomBytes(32).toString('hex');
 }
 
-// Middleware para validar tokens
 async function validateToken(req, res, next) {
   try {
     const authHeader = req.headers.authorization;
@@ -29,14 +27,12 @@ async function validateToken(req, res, next) {
       });
     }
 
-    // Verificar si necesita validación (últimos 3 días antes de expirar)
     const threeDaysBeforeExpiry = new Date(userToken.expiresAt.getTime() - (3 * 24 * 60 * 60 * 1000));
     const needsValidation = new Date() > threeDaysBeforeExpiry;
 
     if (needsValidation) {
       const isStillValid = await validateUserStillExists(userToken);
       if (!isStillValid) {
-        // Usuario fue eliminado - invalidar token
         await UserToken.updateOne(
           { _id: userToken._id },
           { isActive: false }
@@ -47,7 +43,6 @@ async function validateToken(req, res, next) {
         });
       }
 
-      // Renovar token automáticamente
       await UserToken.updateOne(
         { _id: userToken._id },
         {
@@ -57,7 +52,6 @@ async function validateToken(req, res, next) {
       );
     }
 
-    // Agregar datos del usuario al request
     req.user = {
       userId: userToken.userId,
       fraccId: userToken.fraccId,
@@ -67,12 +61,10 @@ async function validateToken(req, res, next) {
 
     next();
   } catch (error) {
-    console.error('Error validando token:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 }
 
-// Validar si el usuario aún existe en la base de datos
 async function validateUserStillExists(userToken) {
   try {
     const fraccionamiento = await Fraccionamiento.findById(userToken.fraccId);
@@ -89,21 +81,17 @@ async function validateUserStillExists(userToken) {
 
     return !!residente;
   } catch (error) {
-    console.error('Error validando existencia del usuario:', error);
     return false;
   }
 }
 
-// Crear nuevo token para usuario
 async function createUserToken(userId, fraccId, residencia, playerId = null) {
   try {
-    // Invalidar tokens anteriores del mismo usuario
     await UserToken.updateMany(
       { userId, fraccId, residencia },
       { isActive: false }
     );
 
-    // Crear nuevo token
     const token = generateSecureToken();
     const userToken = await UserToken.create({
       userId,
@@ -118,12 +106,10 @@ async function createUserToken(userId, fraccId, residencia, playerId = null) {
       expiresAt: userToken.expiresAt
     };
   } catch (error) {
-    console.error('Error creando token:', error);
     throw error;
   }
 }
 
-// Invalidar token específico
 async function invalidateToken(token) {
   try {
     await UserToken.updateOne(
@@ -132,12 +118,10 @@ async function invalidateToken(token) {
     );
     return true;
   } catch (error) {
-    console.error('Error invalidando token:', error);
     return false;
   }
 }
 
-// Invalidar todos los tokens de un usuario
 async function invalidateUserTokens(userId, fraccId, residencia) {
   try {
     const result = await UserToken.updateMany(
@@ -146,7 +130,6 @@ async function invalidateUserTokens(userId, fraccId, residencia) {
     );
     return result.modifiedCount;
   } catch (error) {
-    console.error('Error invalidando tokens del usuario:', error);
     return 0;
   }
 }

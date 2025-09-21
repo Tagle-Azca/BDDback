@@ -49,7 +49,6 @@ router.post("/send-notification", async (req, res) => {
       });
     }
 
-    // Verificar reportes recientes (aceptados/rechazados) para evitar spam
     const cincoMinutosAtras = new Date(Date.now() - 5 * 60 * 1000);
     const reportesRecientes = await Reporte.find({
       fraccId: fraccId,
@@ -58,7 +57,6 @@ router.post("/send-notification", async (req, res) => {
       tiempo: { $gte: cincoMinutosAtras }
     }).sort({ tiempo: -1 });
 
-    console.log(`🔍 ${title} tiene ${reportesRecientes.length} reportes recientes en los últimos 5 minutos`);
 
     if (reportesRecientes.length >= 3) {
       return res.status(429).json({
@@ -71,8 +69,6 @@ router.post("/send-notification", async (req, res) => {
     const timestamp = Date.now();
     const visitorHash = Buffer.from(title).toString('base64').substring(0, 6);
     const notificationId = `${fraccId}_${residencia}_${visitorHash}_${timestamp}`;
-    // NO creamos reporte hasta que haya una respuesta definitiva
-    // Solo enviamos la notificación
 
     const payload = {
       app_id: process.env.ONESIGNAL_APP_ID,
@@ -143,10 +139,7 @@ router.post("/send-notification", async (req, res) => {
             });
           }
 
-          // ✅ Banner removal para expiración también se maneja 100% vía WebSocket
-          // OneSignal solo se usa para enviar notificaciones iniciales
         }
-        // Si ya existe reporte, significa que ya fue respondida, no hacer nada
 
       } catch (error) {
         console.error('Error verificando expiración de notificación:', error);
@@ -162,7 +155,6 @@ router.post("/send-notification", async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error en ruta send-notification:', error);
     res.status(500).json({ 
       success: false,
       error: "Error al enviar notificación",
@@ -225,7 +217,6 @@ router.post("/register", async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Error en registro de dispositivo:', error);
     res.status(500).json({ error: "Error interno del servidor" });
   }
 });

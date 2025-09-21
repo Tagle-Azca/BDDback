@@ -48,15 +48,11 @@ router.post('/validate-qr-access', async (req, res) => {
       return res.json({ success: false, message: "El código QR no corresponde a este fraccionamiento" });
     }
 
-    
-
     res.json({ success: true, message: "QR válido" });
-
   } catch (error) {
     res.json({ success: false, message: "Error validando código QR" });
   }
 });
-
 
 router.post('/:fraccId/abrir-puerta', async (req, res) => {
   const { userId, qrCode } = req.body;
@@ -76,7 +72,6 @@ router.post('/:fraccId/abrir-puerta', async (req, res) => {
       return res.json({ success: false, errorMessage: "El código QR no corresponde a este fraccionamiento" });
     }
 
-
     if (userId) {
       const usuarioValido = validarUsuarioEnFraccionamiento(fraccionamiento, userId);
       if (!usuarioValido) {
@@ -95,15 +90,12 @@ router.post('/:fraccId/abrir-puerta', async (req, res) => {
         { $set: { puerta: false } }
       );
     }, 10000);
-    
+
     res.json({ success: true, message: "Portón abierto correctamente" });
 
   } catch (error) {
     res.json({ success: false, errorMessage: "Error interno del servidor" });
   }
 });
-
-
-
 
 module.exports = router;

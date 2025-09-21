@@ -18,7 +18,7 @@ router.post("/register-house", async (req, res) => {
     });
   }
 
-  casaDatos.activa = true; 
+  casaDatos.activa = true;
 
   const result = await registerHouse(fraccionamiento, casaDatos);
 
@@ -122,7 +122,6 @@ router.delete("/delete-residente/:residenciaId/:residenteId", async (req, res) =
       data: residencia,
     });
   } catch (error) {
-    console.error("Error al eliminar residente:", error);
     res.status(500).json({
       error: "Ocurrió un error al eliminar el residente.",
     });
@@ -196,7 +195,6 @@ router.get("/validate-user/:userId", async (req, res) => {
     });
 
   } catch (error) {
-    console.error("Error validando usuario:", error);
     return res.status(500).json({
       exists: false,
       active: false,

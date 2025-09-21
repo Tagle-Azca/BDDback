@@ -71,7 +71,6 @@ router.post("/:fraccId/crear", validarFraccionamiento, async (req, res) => {
     if (notificationId) {
       const reporteExistente = await Reporte.findOne({ notificationId });
       if (reporteExistente) {
-        console.log(`Notificación ${notificationId} ya fue contestada por: ${reporteExistente.autorizadoPor}`);
         return res.status(409).json({ 
           error: "Esta notificación ya fue contestada por otro residente",
           yaContestada: true,
@@ -126,8 +125,7 @@ router.post("/:fraccId/crear", validarFraccionamiento, async (req, res) => {
     const io = req.app.get('io');
     if (io) {
       const room = `casa_${numeroCasa}_${req.params.fraccId}`;
-      console.log(`Notificando a la casa ${numeroCasa} que ${residenteNombre || 'un residente'} ${estatus} la solicitud`);
-      
+
       io.to(room).emit('notificacionContestada', {
         reporteId: reporteGuardado._id.toString(),
         notificationId: reporteGuardado.notificationId,
@@ -142,8 +140,6 @@ router.post("/:fraccId/crear", validarFraccionamiento, async (req, res) => {
         motivo: reporteGuardado.motivo
       });
 
-      // ✅ Banner removal ahora se maneja 100% vía WebSocket
-      // OneSignal solo se usa para enviar notificaciones iniciales
     }
 
     if (estatus.toLowerCase() === 'aceptado') {
@@ -159,6 +155,7 @@ router.post("/:fraccId/crear", validarFraccionamiento, async (req, res) => {
             { $set: { puerta: false } }
           );
         } catch (error) {
+          console.error('Error closing door:', error);
         }
       }, 10000);
     }
@@ -328,11 +325,8 @@ async function enviarNotificacionRetiroBanner(fraccId, numeroCasa, notificationI
       .map(residente => residente.playerId)
       .filter(id => id && id.trim() !== ''))];
 
-    console.log(`Casa ${numeroCasa}: ${residentesActivos.length} residentes activos, ${playerIds.length} Player IDs únicos`);
-    console.log(`Player IDs: ${playerIds.join(', ')}`);
 
     if (playerIds.length === 0) {
-      console.log('No hay Player IDs válidos para enviar retiro de banner');
       return;
     }
 
@@ -369,10 +363,8 @@ async function enviarNotificacionRetiroBanner(fraccId, numeroCasa, notificationI
     });
 
     const result = await response.json();
-    console.log(`🗑️ Notificación de retiro de banner enviada: ${result.id} - ${playerIds.length} dispositivos`);
 
   } catch (error) {
-    console.error('Error enviando notificación de retiro de banner:', error);
   }
 }
 

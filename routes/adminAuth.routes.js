@@ -12,7 +12,6 @@ router.post("/login", async (req, res) => {
 
 
     let user = await Admin.findOne({ usuario });
-
     if (!user) {
       user = await FraccAdmin.findOne({ usuario });
     }
@@ -20,8 +19,6 @@ router.post("/login", async (req, res) => {
     if (!user) {
       return res.status(404).json({ error: "Usuario no encontrado" });
     }
-
-
 
     const isMatch = await bcrypt.compare(contrasena, user.contrasena);
 
@@ -38,7 +35,6 @@ router.post("/login", async (req, res) => {
       process.env.JWT_SECRET,
       { expiresIn: "1h" }
     );
-
 
     return res.json({
       message: "Login exitoso",
@@ -76,7 +72,6 @@ router.post("/register", async (req, res) => {
     }
 
     const hashedPassword = await bcrypt.hash(contrasena, 10);
- 
 
     let newUser;
     if (rol === "superadmin") {

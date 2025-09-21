@@ -8,7 +8,10 @@ const socketIo = require("socket.io");
 const residenciasRoutes = require("./routes/residencias.routes");
 const authRoutes = require("./routes/adminAuth.routes");
 const userAuthRoutes = require("./routes/auth.routes");
-const fraccRoutes = require("./routes/fracc.routes");
+const fraccionamientosRoutes = require("./routes/fraccionamientos.routes");
+const casasRoutes = require("./routes/casas.routes");
+const residentesRoutes = require("./routes/residentes.routes");
+const visitasRoutes = require("./routes/visitas.routes");
 const reportesRoutes = require("./routes/reportes.routes");
 const notificationRoutes = require("./routes/notification.routes");
 const qrPuertaRoutes = require("./routes/qr-puerta");
@@ -29,17 +32,21 @@ const io = socketIo(server, {
 });
 
 io.on('connection', (socket) => {
+  console.log(`SOCKET: Cliente conectado: ${socket.id}`);
 
   socket.on('joinHouse', ({ numeroCasa, fraccId, userId }) => {
     const room = `casa_${numeroCasa}_${fraccId}`;
     socket.join(room);
+    console.log(`SOCKET: Cliente ${socket.id} se unió al room: ${room}`);
   });
 
   socket.on('disconnect', () => {
+    console.log(`SOCKET: Cliente desconectado: ${socket.id}`);
   });
 });
 
 global.io = io;
+app.set('io', io);
 
 global.emitToHouse = (numeroCasa, fraccId, event, data) => {
   if (global.io) {
@@ -85,7 +92,10 @@ global.latestNotification = null;
 
 app.use("/api/auth", authRoutes);
 app.use("/api/user-auth", userAuthRoutes);
-app.use("/api/fraccionamientos", fraccRoutes);
+app.use("/api/fraccionamientos", fraccionamientosRoutes);
+app.use("/api/fraccionamientos", casasRoutes);
+app.use("/api/fraccionamientos", residentesRoutes);
+app.use("/api/fraccionamientos", visitasRoutes);
 app.use("/api/residencias", residenciasRoutes);
 app.use("/api/reportes", reportesRoutes);
 app.use("/api/notifications", notificationRoutes);

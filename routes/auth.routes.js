@@ -3,7 +3,6 @@ const router = express.Router();
 const { createUserToken, invalidateToken, validateUserStillExists } = require('../middleware/tokenAuth');
 const Fraccionamiento = require('../models/fraccionamiento');
 
-// Login con QR y generación de token mensual
 router.post('/login', async (req, res) => {
   try {
     const { qrData } = req.body;
@@ -14,7 +13,6 @@ router.post('/login', async (req, res) => {
       });
     }
 
-    // Parsear datos del QR: "fraccId|residencia|residenteId"
     const parts = qrData.split('|');
     if (parts.length !== 3) {
       return res.status(400).json({
@@ -24,7 +22,6 @@ router.post('/login', async (req, res) => {
 
     const [fraccId, residencia, residenteId] = parts;
 
-    // Validar fraccionamiento
     const fraccionamiento = await Fraccionamiento.findById(fraccId);
     if (!fraccionamiento) {
       return res.status(404).json({
@@ -32,7 +29,6 @@ router.post('/login', async (req, res) => {
       });
     }
 
-    // Validar casa
     const casa = fraccionamiento.residencias.find(r =>
       r.numero.toString() === residencia.toString()
     );
@@ -48,7 +44,6 @@ router.post('/login', async (req, res) => {
       });
     }
 
-    // Validar residente
     const residente = casa.residentes.find(r =>
       r._id.toString() === residenteId && r.activo === true
     );
@@ -58,7 +53,6 @@ router.post('/login', async (req, res) => {
       });
     }
 
-    // Crear token mensual
     const tokenData = await createUserToken(
       residenteId,
       fraccId,
@@ -80,14 +74,12 @@ router.post('/login', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error en login:', error);
     res.status(500).json({
       error: 'Error interno del servidor'
     });
   }
 });
 
-// Logout - invalidar token
 router.post('/logout', async (req, res) => {
   try {
     const authHeader = req.headers.authorization;
@@ -101,14 +93,12 @@ router.post('/logout', async (req, res) => {
       message: 'Sesión cerrada exitosamente'
     });
   } catch (error) {
-    console.error('Error en logout:', error);
     res.status(500).json({
       error: 'Error interno del servidor'
     });
   }
 });
 
-// Validar token actual (para verificación rápida)
 router.get('/validate', async (req, res) => {
   try {
     const authHeader = req.headers.authorization;
@@ -143,7 +133,6 @@ router.get('/validate', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error validando token:', error);
     res.status(500).json({
       valid: false,
       error: 'Error interno del servidor'
