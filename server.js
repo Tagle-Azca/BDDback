@@ -15,6 +15,7 @@ const visitasRoutes = require("./routes/visitas.routes");
 const reportesRoutes = require("./routes/reportes.routes");
 const notificationRoutes = require("./routes/notification.routes");
 const qrPuertaRoutes = require("./routes/qr-puerta");
+const analyticsRoutes = require("./routes/analytics.routes");
 
 const app = express();
 const server = http.createServer(app);
@@ -100,6 +101,7 @@ app.use("/api/residencias", residenciasRoutes);
 app.use("/api/reportes", reportesRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/qr-puerta", qrPuertaRoutes);
+app.use("/api/analytics", analyticsRoutes);
 
 
 const PORT = process.env.PORT || 5002;
