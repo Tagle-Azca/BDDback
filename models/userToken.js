@@ -22,7 +22,7 @@ const userTokenSchema = new mongoose.Schema({
   },
   playerId: {
     type: String,
-    required: false // Puede ser null si no tiene notificaciones
+    required: false
   },
   issuedAt: {
     type: Date,
@@ -30,7 +30,7 @@ const userTokenSchema = new mongoose.Schema({
   },
   expiresAt: {
     type: Date,
-    default: () => new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 días
+    default: () => new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
   },
   lastValidated: {
     type: Date,
@@ -44,10 +44,8 @@ const userTokenSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Index para limpieza automática de tokens expirados
 userTokenSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
-// Index compuesto para búsquedas eficientes
 userTokenSchema.index({ userId: 1, fraccId: 1, isActive: 1 });
 
 module.exports = mongoose.model('UserToken', userTokenSchema);

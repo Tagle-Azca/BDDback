@@ -1,14 +1,6 @@
-// Script de prueba para el sistema de analytics
-//
-// MODO DESARROLLO (localhost):
-// node test-analytics.js
-//
-// MODO PRODUCCIÓN (Render):
-// NODE_ENV=production node test-analytics.js
 
 const axios = require('axios');
 
-// Configuración
 const BASE_URL = process.env.NODE_ENV === 'production'
   ? 'https://ingresosbackend.onrender.com'
   : 'http://localhost:5002';
@@ -16,14 +8,12 @@ const ANALYTICS_URL = `${BASE_URL}/api/analytics`;
 
 console.log(`🌐 Usando servidor: ${BASE_URL}`);
 
-// Datos de prueba
 const testData = {
   userId: '68d41e9ad9b7f5d456400283',
   fraccId: '685417c35764cd581a84a2c9',
   house: '104'
 };
 
-// Función para probar un evento individual
 async function testSingleEvent() {
   try {
     console.log('\nProbando evento individual...');
@@ -46,7 +36,6 @@ async function testSingleEvent() {
   }
 }
 
-// Función para probar múltiples eventos (batch)
 async function testBatchEvents() {
   try {
     console.log('\nProbando batch de eventos...');

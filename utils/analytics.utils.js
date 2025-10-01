@@ -1,6 +1,5 @@
 const Analytics = require('../models/Analytics');
 
-// Función para limpiar eventos antiguos (útil para tareas programadas)
 const cleanupOldEvents = async (daysToKeep = 730) => {
   try {
     const cutoffDate = new Date();
@@ -18,7 +17,6 @@ const cleanupOldEvents = async (daysToKeep = 730) => {
   }
 };
 
-// Función para obtener un resumen rápido del sistema
 const getSystemSummary = async () => {
   try {
     const today = new Date();
@@ -47,7 +45,6 @@ const getSystemSummary = async () => {
   }
 };
 
-// Validador de eventos
 const validateEventData = (event, properties) => {
   const errors = [];
 
@@ -75,7 +72,6 @@ const validateEventData = (event, properties) => {
   };
 };
 
-// Generador de reportes básicos
 const generateReport = async (fraccId, startDate, endDate) => {
   try {
     const matchConditions = { fraccId };
@@ -93,14 +89,12 @@ const generateReport = async (fraccId, startDate, endDate) => {
       houseActivity,
       hourlyDistribution
     ] = await Promise.all([
-      // Conteo por tipo de evento
       Analytics.aggregate([
         { $match: matchConditions },
         { $group: { _id: '$event', count: { $sum: 1 } } },
         { $sort: { count: -1 } }
       ]),
 
-      // Actividad por usuario
       Analytics.aggregate([
         { $match: matchConditions },
         { $group: {
@@ -112,7 +106,6 @@ const generateReport = async (fraccId, startDate, endDate) => {
         { $limit: 20 }
       ]),
 
-      // Actividad por casa
       Analytics.aggregate([
         {
           $match: {
@@ -133,7 +126,6 @@ const generateReport = async (fraccId, startDate, endDate) => {
         { $sort: { eventCount: -1 } }
       ]),
 
-      // Distribución por horas del día
       Analytics.aggregate([
         { $match: matchConditions },
         { $group: {

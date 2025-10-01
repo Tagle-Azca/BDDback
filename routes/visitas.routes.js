@@ -33,7 +33,6 @@ const subirImagenCloudinary = async (filePath) => {
   }
 };
 
-// Registrar visita
 router.post("/:fraccId/casas/:numero/visitas",
   validarFraccionamiento,
   validarCasa,

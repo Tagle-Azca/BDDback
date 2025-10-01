@@ -1,6 +1,5 @@
 const Analytics = require('../models/Analytics');
 
-// Trackear evento individual
 const trackEvent = async (req, res) => {
   try {
     const { event, properties } = req.body;
@@ -12,7 +11,6 @@ const trackEvent = async (req, res) => {
       });
     }
 
-    // Extraer propiedades principales
     const {
       user_id: userId,
       house,
@@ -31,7 +29,6 @@ const trackEvent = async (req, res) => {
       });
     }
 
-    // Crear documento de analytics
     const analyticsEvent = new Analytics({
       event,
       userId,
@@ -63,7 +60,6 @@ const trackEvent = async (req, res) => {
   }
 };
 
-// Trackear múltiples eventos (batch)
 const trackBatch = async (req, res) => {
   try {
     const { events } = req.body;
@@ -126,7 +122,6 @@ const trackBatch = async (req, res) => {
   }
 };
 
-// Obtener estadísticas básicas para un usuario
 const getUserStats = async (req, res) => {
   try {
     const { userId } = req.params;
@@ -135,7 +130,6 @@ const getUserStats = async (req, res) => {
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - parseInt(days));
 
-    // Agregaciones básicas
     const stats = await Analytics.aggregate([
       {
         $match: {
@@ -155,13 +149,11 @@ const getUserStats = async (req, res) => {
       }
     ]);
 
-    // Conteo total de eventos
     const totalEvents = await Analytics.countDocuments({
       userId: userId,
       serverTimestamp: { $gte: startDate }
     });
 
-    // Eventos por día
     const dailyActivity = await Analytics.aggregate([
       {
         $match: {
@@ -204,7 +196,6 @@ const getUserStats = async (req, res) => {
   }
 };
 
-// Obtener estadísticas generales del fraccionamiento
 const getFraccionamientoStats = async (req, res) => {
   try {
     const { fraccId } = req.params;
@@ -213,7 +204,6 @@ const getFraccionamientoStats = async (req, res) => {
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - parseInt(days));
 
-    // Eventos más comunes
     const topEvents = await Analytics.aggregate([
       {
         $match: {
@@ -235,7 +225,6 @@ const getFraccionamientoStats = async (req, res) => {
       }
     ]);
 
-    // Casas más activas
     const topHouses = await Analytics.aggregate([
       {
         $match: {
@@ -266,7 +255,6 @@ const getFraccionamientoStats = async (req, res) => {
       }
     ]);
 
-    // Usuarios activos
     const activeUsers = await Analytics.aggregate([
       {
         $match: {

@@ -56,13 +56,11 @@ const AnalyticsSchema = new mongoose.Schema({
   collection: 'analytics'
 });
 
-// Índices compuestos para consultas eficientes
 AnalyticsSchema.index({ event: 1, serverTimestamp: -1 });
 AnalyticsSchema.index({ userId: 1, serverTimestamp: -1 });
 AnalyticsSchema.index({ fraccId: 1, event: 1, serverTimestamp: -1 });
 AnalyticsSchema.index({ house: 1, event: 1, serverTimestamp: -1 });
 
-// TTL index para eliminar eventos antiguos después de 2 años
 AnalyticsSchema.index({ serverTimestamp: 1 }, { expireAfterSeconds: 63072000 });
 
 module.exports = mongoose.model('Analytics', AnalyticsSchema);

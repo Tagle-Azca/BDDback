@@ -107,11 +107,9 @@ router.post("/send-notification", async (req, res) => {
 
     setTimeout(async () => {
       try {
-        // Verificar si ya existe un reporte (respuesta) para esta notificación
         const reporteExistente = await Reporte.findOne({ notificationId });
 
         if (!reporteExistente) {
-          // Si no hay respuesta después de 5 minutos, crear reporte como expirado
           await Reporte.create({
             notificationId: notificationId,
             nombre: title,

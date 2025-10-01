@@ -4,7 +4,6 @@ const { validarFraccionamiento, validarCasa } = require('../middleware/validator
 
 const router = express.Router();
 
-// Crear casa
 router.post("/:fraccId/casas", validarFraccionamiento, async (req, res) => {
   try {
     const { numero } = req.body;
@@ -29,7 +28,6 @@ router.post("/:fraccId/casas", validarFraccionamiento, async (req, res) => {
   }
 });
 
-// Toggle estado de casa
 router.put("/:fraccId/casas/:numero/toggle", validarFraccionamiento, validarCasa, async (req, res) => {
   try {
     req.casa.activa = !req.casa.activa;

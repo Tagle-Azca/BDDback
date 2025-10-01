@@ -6,7 +6,6 @@ const { validarFraccionamiento } = require('../middleware/validators');
 
 const router = express.Router();
 
-// Crear fraccionamiento
 router.post("/", async (req, res) => {
   try {
     const hashedPassword = await bcrypt.hash(req.body.contrasena, 10);
@@ -36,7 +35,6 @@ router.post("/", async (req, res) => {
   }
 });
 
-// Obtener todos los fraccionamientos
 router.get("/", async (req, res) => {
   try {
     const fraccionamientos = await Fraccionamiento.find();
@@ -46,12 +44,10 @@ router.get("/", async (req, res) => {
   }
 });
 
-// Obtener fraccionamiento por ID
 router.get("/:fraccId", validarFraccionamiento, (req, res) => {
   res.status(200).json(req.fraccionamiento);
 });
 
-// Toggle estado del fraccionamiento completo
 router.put("/:fraccId/toggle", validarFraccionamiento, async (req, res) => {
   try {
     const nuevoEstado = req.fraccionamiento.estado === "activo" ? "inactivo" : "activo";
@@ -72,7 +68,6 @@ router.put("/:fraccId/toggle", validarFraccionamiento, async (req, res) => {
   }
 });
 
-// Login de fraccionamiento
 router.post("/login", async (req, res) => {
   const { usuario, contrasena } = req.body;
 

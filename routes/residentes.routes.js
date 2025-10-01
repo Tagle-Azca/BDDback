@@ -1,17 +1,15 @@
 const express = require("express");
 const fetch = require("node-fetch");
 const PlayerRegistry = require("../models/playerRegistry");
-const { v4: uuidv4 } = require("uuid");
 const { manejarError } = require('../utils/helpers');
 const { validarFraccionamiento, validarCasa } = require('../middleware/validators');
 
 const router = express.Router();
 
-// Crear residente
 router.post("/:fraccId/casas/:numero/residentes", validarFraccionamiento, validarCasa, async (req, res) => {
   try {
-    const { nombre, relacion } = req.body;
-    req.casa.residentes.push({ nombre, relacion, qrPersonal: uuidv4() });
+    const { nombre } = req.body;
+    req.casa.residentes.push({ nombre });
     await req.fraccionamiento.save();
     res.status(201).json(req.fraccionamiento);
   } catch (error) {
@@ -19,12 +17,10 @@ router.post("/:fraccId/casas/:numero/residentes", validarFraccionamiento, valida
   }
 });
 
-// Obtener residentes de una casa
 router.get("/residencias/:fraccId/:numero", validarFraccionamiento, validarCasa, (req, res) => {
   res.status(200).json({ residentes: req.casa.residentes });
 });
 
-// Login de residente
 router.post("/residencias/:fraccId/:numero/login", validarFraccionamiento, validarCasa, async (req, res) => {
   try {
     const { residenteId } = req.body;
@@ -45,7 +41,6 @@ router.post("/residencias/:fraccId/:numero/login", validarFraccionamiento, valid
   }
 });
 
-// Restablecer residente
 router.put("/:fraccId/casas/:numero/residentes/:residenteId/restablecer",
   validarFraccionamiento,
   validarCasa,
@@ -82,18 +77,17 @@ router.put("/:fraccId/casas/:numero/residentes/:residenteId/restablecer",
   }
 );
 
-// Actualizar datos de un residente
 router.put("/:fraccId/casas/:numero/residentes/:residenteId",
   validarFraccionamiento,
   validarCasa,
   async (req, res) => {
     try {
       const { residenteId } = req.params;
-      const { nombre, relacion } = req.body;
+      const { nombre } = req.body;
 
-      if (!nombre || !relacion) {
+      if (!nombre) {
         return res.status(400).json({
-          error: "Nombre y relación son campos obligatorios"
+          error: "Nombre es campo obligatorio"
         });
       }
 
@@ -103,7 +97,6 @@ router.put("/:fraccId/casas/:numero/residentes/:residenteId",
       }
 
       residente.nombre = nombre.trim();
-      residente.relacion = relacion.trim();
 
       await req.fraccionamiento.save();
 
@@ -113,7 +106,6 @@ router.put("/:fraccId/casas/:numero/residentes/:residenteId",
         residente: {
           _id: residente._id,
           nombre: residente.nombre,
-          relacion: residente.relacion,
           activo: residente.activo
         }
       });
@@ -123,7 +115,6 @@ router.put("/:fraccId/casas/:numero/residentes/:residenteId",
   }
 );
 
-// Toggle estado de residente
 router.put("/:fraccId/casas/:numero/residentes/:residenteId/toggle",
   validarFraccionamiento,
   validarCasa,
@@ -165,7 +156,6 @@ router.put("/:fraccId/casas/:numero/residentes/:residenteId/toggle",
   }
 );
 
-// Obtener residentes inactivos
 router.get("/:fraccId/residentes/inactivos",
   validarFraccionamiento,
   async (req, res) => {
@@ -178,7 +168,6 @@ router.get("/:fraccId/residentes/inactivos",
             residentesInactivos.push({
               _id: residente._id,
               nombre: residente.nombre,
-              relacion: residente.relacion,
               activo: residente.activo,
               playerId: residente.playerId,
               casa: casa.numero
@@ -197,7 +186,6 @@ router.get("/:fraccId/residentes/inactivos",
   }
 );
 
-// Eliminar residente
 router.delete("/:fraccId/casas/:numero/residentes/:residenteId",
   validarFraccionamiento,
   validarCasa,
@@ -236,7 +224,6 @@ router.delete("/:fraccId/casas/:numero/residentes/:residenteId",
   }
 );
 
-// Función para enviar notificación de expulsión
 async function enviarNotificacionExpulsion(playerId, nombreResidente) {
   try {
     const payload = {
@@ -264,7 +251,6 @@ async function enviarNotificacionExpulsion(playerId, nombreResidente) {
     const result = await response.json();
 
   } catch (error) {
-    // Error silenciado
   }
 }
 
