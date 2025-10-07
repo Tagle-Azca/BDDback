@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const fetch = require("node-fetch");
+const crypto = require("crypto");
 const PlayerRegistry = require("../models/playerRegistry");
 const Reporte = require("../models/Reportes");
 const Fraccionamiento = require("../models/fraccionamiento");
@@ -70,9 +71,21 @@ router.post("/send-notification", async (req, res) => {
     const visitorHash = Buffer.from(title).toString('base64').substring(0, 6);
     const notificationId = `${fraccId}_${residencia}_${visitorHash}_${timestamp}`;
 
+    const notificationSecret = process.env.NOTIFICATION_SECRET || 'default-secret-change-in-production';
+    const securityHash = crypto
+      .createHmac('sha256', notificationSecret)
+      .update(`${fraccId}_${residencia}_${notificationId}`)
+      .digest('hex')
+      .substring(0, 16);
+
     const payload = {
       app_id: process.env.ONESIGNAL_APP_ID,
       include_player_ids: playerIds,
+      filters: [
+        { field: "tag", key: "fraccId", relation: "=", value: fraccId.toString() },
+        { operator: "AND" },
+        { field: "tag", key: "numeroCasa", relation: "=", value: residencia.toString() }
+      ],
       headings: { en: title },
       contents: { en: body },
       big_picture: foto,
@@ -85,6 +98,7 @@ router.post("/send-notification", async (req, res) => {
       notificationId,
       fraccId: fraccId.toString(),
       residencia: residencia.toString(),
+      securityHash,
       foto,
       nombre: title,
       motivo: body,

@@ -40,8 +40,7 @@ const AnalyticsSchema = new mongoose.Schema({
   },
   serverTimestamp: {
     type: Date,
-    default: Date.now,
-    index: true
+    default: Date.now
   },
   sessionId: {
     type: String,

@@ -8,7 +8,7 @@ const residenteSchema = new mongoose.Schema({
 });
 
 const casaSchema = new mongoose.Schema({
-  numero: { type: Number, required: true },
+  numero: { type: String, required: true },
   qrCasa: { type: String, default: () => uuidv4() },
   residentes: { type: [residenteSchema], default: [] },
   activa: { type: Boolean, default: true }
