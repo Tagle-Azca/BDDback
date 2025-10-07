@@ -118,7 +118,7 @@ router.post("/send-notification", async (req, res) => {
     console.log('   Notification ID:', notificationId);
     console.log('   Security Hash:', securityHash);
 
-    const response = await fetch("https://onesignal.com/api/v1/notifications", {
+    const response = await fetch("https://api.onesignal.com/api/v1/notifications", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
