@@ -7,8 +7,14 @@ const Reporte = require("../models/Reportes");
 const Fraccionamiento = require("../models/fraccionamiento");
 
 router.post("/send-notification", async (req, res) => {
+  console.log('📲 POST /send-notification - Inicio');
+  console.log('   Body:', JSON.stringify(req.body, null, 2));
   try {
     const { title, body, fraccId, residencia, foto } = req.body;
+    console.log('   title:', title);
+    console.log('   body:', body);
+    console.log('   fraccId:', fraccId);
+    console.log('   residencia:', residencia);
 
 
     const fraccionamiento = await Fraccionamiento.findById(fraccId);
@@ -107,6 +113,10 @@ router.post("/send-notification", async (req, res) => {
     }
     };
 
+    console.log('📤 Enviando notificación a OneSignal...');
+    console.log('   Player IDs:', playerIds);
+    console.log('   Notification ID:', notificationId);
+    console.log('   Security Hash:', securityHash);
 
     const response = await fetch("https://onesignal.com/api/v1/notifications", {
       method: "POST",
@@ -118,6 +128,7 @@ router.post("/send-notification", async (req, res) => {
     });
 
     const resultado = await response.json();
+    console.log('✅ Respuesta de OneSignal:', JSON.stringify(resultado, null, 2));
 
     setTimeout(async () => {
       try {
