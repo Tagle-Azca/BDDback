@@ -87,11 +87,6 @@ router.post("/send-notification", async (req, res) => {
     const payload = {
       app_id: process.env.ONESIGNAL_APP_ID,
       include_player_ids: playerIds,
-      filters: [
-        { field: "tag", key: "fraccId", relation: "=", value: fraccId.toString() },
-        { operator: "AND" },
-        { field: "tag", key: "numeroCasa", relation: "=", value: residencia.toString() }
-      ],
       headings: { en: title },
       contents: { en: body },
       big_picture: foto,
