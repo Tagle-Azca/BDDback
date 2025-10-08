@@ -19,30 +19,16 @@ const enviarNotificacionVisita = async (fraccId, residencia, nombre, motivo, fot
     console.log('   Buscando casa con numero:', residencia, 'tipo:', typeof residencia);
     console.log('   parseInt(residencia):', parseInt(residencia));
 
-    const casasEncontradas = fracc.residencias.map(r => ({
-      numero: r.numero,
-      tipo: typeof r.numero,
-      comparacion: r.numero === parseInt(residencia),
-      comparacionString: r.numero == residencia,
-      comparacionStrictString: r.numero === residencia.toString()
-    }));
-    console.log('   Todas las casas:', JSON.stringify(casasEncontradas, null, 2));
+    // Buscar casa usando comparación de strings
+    const casa = fracc.residencias.find(r => r.numero.toString() === residencia.toString());
 
-    const casa = fracc.residencias.find(r => r.numero === parseInt(residencia));
     if (!casa) {
-      console.log('   ❌ Casa no encontrada con parseInt');
-      const casaConString = fracc.residencias.find(r => r.numero == residencia);
-      if (casaConString) {
-        console.log('   ✅ Casa encontrada con comparación flexible (==)');
-        console.log('   Casa encontrada:', { numero: casaConString.numero, activa: casaConString.activa });
-      } else {
-        const casaConToString = fracc.residencias.find(r => r.numero.toString() === residencia.toString());
-        if (casaConToString) {
-          console.log('   ✅ Casa encontrada con .toString()');
-        }
-      }
+      console.log('   ❌ Casa no encontrada. Residencia buscada:', residencia);
+      console.log('   Residencias disponibles:', fracc.residencias.map(r => r.numero));
       return { success: false, error: "Casa no encontrada" };
     }
+
+    console.log('   ✅ Casa encontrada:', { numero: casa.numero, activa: casa.activa });
 
     if (!casa.activa) {
       console.log('   ❌ Casa desactivada');
