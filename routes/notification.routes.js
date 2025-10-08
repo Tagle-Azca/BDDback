@@ -125,25 +125,31 @@ router.post("/send-notification", async (req, res) => {
     const resultado = await response.json();
     console.log('✅ Respuesta de OneSignal:', JSON.stringify(resultado, null, 2));
 
+    // Guardar notificación como pendiente inmediatamente
+    await Reporte.create({
+      notificationId: notificationId,
+      nombre: title,
+      motivo: body,
+      foto: foto || '',
+      numeroCasa: residencia.toString(),
+      estatus: 'pendiente',
+      fraccId: fraccId,
+      fechaCreacion: new Date(),
+      residenteId: null,
+      residenteNombre: null,
+      autorizadoPor: null,
+      tiempo: new Date()
+    });
+
     setTimeout(async () => {
       try {
         const reporteExistente = await Reporte.findOne({ notificationId });
 
-        if (!reporteExistente) {
-          await Reporte.create({
-            notificationId: notificationId,
-            nombre: title,
-            motivo: body,
-            foto: foto || '',
-            numeroCasa: residencia.toString(),
-            estatus: 'expirado',
-            fraccId: fraccId,
-            fechaCreacion: new Date(),
-            residenteId: null,
-            residenteNombre: 'Sistema - Expirada automáticamente',
-            autorizadoPor: 'Sistema - Expiración automática',
-            tiempo: new Date()
-          });
+        if (reporteExistente && reporteExistente.estatus === 'pendiente') {
+          reporteExistente.estatus = 'expirado';
+          reporteExistente.residenteNombre = 'Sistema - Expirada automáticamente';
+          reporteExistente.autorizadoPor = 'Sistema - Expiración automática';
+          await reporteExistente.save();
 
           if (global.io) {
             const room = `casa_${residencia}_${fraccId}`;
@@ -156,7 +162,6 @@ router.post("/send-notification", async (req, res) => {
               timestamp: new Date()
             });
           }
-
         }
 
       } catch (error) {
