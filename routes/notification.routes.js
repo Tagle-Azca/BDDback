@@ -181,6 +181,44 @@ router.post("/send-notification", async (req, res) => {
   }
 });
 
+router.get("/pending/:fraccId/:residencia", async (req, res) => {
+  try {
+    const { fraccId, residencia } = req.params;
+
+    const reportesPendientes = await Reporte.find({
+      fraccId: fraccId,
+      numeroCasa: residencia.toString(),
+      estatus: 'pendiente',
+    }).sort({ tiempo: -1 });
+
+    const notificaciones = reportesPendientes.map(reporte => ({
+      notificationId: reporte.notificationId,
+      titulo: reporte.nombre,
+      descripcion: reporte.motivo,
+      foto: reporte.foto,
+      nombre: reporte.nombre,
+      motivo: reporte.motivo,
+      fraccId: reporte.fraccId,
+      residencia: reporte.numeroCasa,
+      tipo: 'solicitud_acceso',
+      fecha: reporte.tiempo,
+    }));
+
+    res.json({
+      success: true,
+      notificaciones: notificaciones,
+      total: notificaciones.length
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: "Error al obtener notificaciones pendientes",
+      details: error.message
+    });
+  }
+});
+
 router.post("/register", async (req, res) => {
   try {
     const { playerId, fraccId, residencia, userId } = req.body;
