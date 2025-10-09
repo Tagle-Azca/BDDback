@@ -131,6 +131,7 @@ router.post("/:fraccId/crear", validarFraccionamiento, async (req, res) => {
         notificationId: reporteGuardado.notificationId,
         estatus: estatus.toUpperCase(),
         autorizadoPor: reporteGuardado.autorizadoPor,
+        autorizadoPorId: residenteId,
         numeroCasa: numeroCasa,
         fraccId: req.params.fraccId,
         timestamp: new Date(),
