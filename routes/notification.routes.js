@@ -196,18 +196,30 @@ router.get("/pending/:fraccId/:residencia", async (req, res) => {
       estatus: 'pendiente',
     }).sort({ tiempo: -1 });
 
-    const notificaciones = reportesPendientes.map(reporte => ({
-      notificationId: reporte.notificationId,
-      titulo: reporte.nombre,
-      descripcion: reporte.motivo,
-      foto: reporte.foto,
-      nombre: reporte.nombre,
-      motivo: reporte.motivo,
-      fraccId: reporte.fraccId,
-      residencia: reporte.numeroCasa,
-      tipo: 'solicitud_acceso',
-      fecha: reporte.tiempo,
-    }));
+    const notificationSecret = process.env.NOTIFICATION_SECRET || 'default-secret-change-in-production';
+
+    const notificaciones = reportesPendientes.map(reporte => {
+      // Recalcular el security hash para cada notificación
+      const securityHash = crypto
+        .createHmac('sha256', notificationSecret)
+        .update(`${fraccId}_${residencia}_${reporte.notificationId}`)
+        .digest('hex')
+        .substring(0, 16);
+
+      return {
+        notificationId: reporte.notificationId,
+        titulo: reporte.nombre,
+        descripcion: reporte.motivo,
+        foto: reporte.foto,
+        nombre: reporte.nombre,
+        motivo: reporte.motivo,
+        fraccId: reporte.fraccId.toString(),
+        residencia: reporte.numeroCasa,
+        tipo: 'solicitud_acceso',
+        fecha: reporte.tiempo,
+        securityHash: securityHash, // Agregar hash de seguridad
+      };
+    });
 
     res.json({
       success: true,
