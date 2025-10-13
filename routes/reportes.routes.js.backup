@@ -68,80 +68,59 @@ router.post("/:fraccId/crear", validarFraccionamiento, async (req, res) => {
       }
     }
 
-    let reporteGuardado;
-    let fueActualizado = false;
-
-    // 🔄 NUEVA LÓGICA: Buscar si existe un reporte con este notificationId
     if (notificationId) {
       const reporteExistente = await Reporte.findOne({ notificationId });
-
       if (reporteExistente) {
-        // Si ya fue contestada (no está pendiente), rechazar
-        if (reporteExistente.estatus !== 'pendiente') {
-          return res.status(409).json({
-            error: "Esta notificación ya fue contestada por otro residente",
-            yaContestada: true,
-            reporte: reporteExistente,
-            respondidoPor: reporteExistente.autorizadoPor,
-            estatus: reporteExistente.estatus.toUpperCase()
-          });
-        }
-
-        // ✅ Si está PENDIENTE, ACTUALIZAR en lugar de crear uno nuevo
-        console.log(`🔄 Actualizando reporte pendiente: ${notificationId} -> ${estatus}`);
-        reporteExistente.estatus = estatus.toLowerCase();
-        reporteExistente.autorizadoPor = residenteNombre || 'Usuario';
-        reporteExistente.autorizadoPorId = residenteId || null;
-        reporteExistente.tiempo = new Date();
-        reporteGuardado = await reporteExistente.save();
-        fueActualizado = true;
-
-        console.log(`✅ Reporte actualizado exitosamente de pendiente a ${estatus}`);
-      } else {
-        // No existe, crear uno nuevo (caso normal de primera respuesta)
-        reporteGuardado = await Reporte.create({
-          fraccId: req.params.fraccId,
-          numeroCasa: numeroCasa.toString(),
-          nombre: nombre,
-          motivo: motivo,
-          foto: foto,
-          estatus: estatus.toLowerCase(),
-          autorizadoPor: residenteNombre || (estatus === 'expirado' ? 'Sistema' : 'Usuario'),
-          autorizadoPorId: residenteId || null,
-          tiempo: new Date(),
-          notificationId: notificationId
+        return res.status(409).json({ 
+          error: "Esta notificación ya fue contestada por otro residente",
+          yaContestada: true,
+          reporte: reporteExistente,
+          respondidoPor: reporteExistente.autorizadoPor,
+          estatus: reporteExistente.estatus.toUpperCase()
         });
       }
-    } else {
-      // Sin notificationId, validar duplicados por tiempo
-      const cincuMinutosAtras = new Date(Date.now() - 5 * 60 * 1000);
-      const reporteRecienteEnCasa = await Reporte.findOne({
-        fraccId: req.params.fraccId,
-        numeroCasa: numeroCasa.toString(),
-        nombre: nombre,
-        motivo: motivo,
-        tiempo: { $gte: cincuMinutosAtras }
-      });
+    }
 
-      if (reporteRecienteEnCasa) {
-        return res.status(409).json({
-          error: "Ya existe un reporte similar reciente para esta casa",
-          reporte: reporteRecienteEnCasa
+    const cincuMinutosAtras = new Date(Date.now() - 5 * 60 * 1000);
+    const reporteRecienteEnCasa = await Reporte.findOne({
+      fraccId: req.params.fraccId,
+      numeroCasa: numeroCasa.toString(),
+      nombre: nombre,
+      motivo: motivo,
+      tiempo: { $gte: cincuMinutosAtras }
+    });
+
+    if (reporteRecienteEnCasa) {
+      return res.status(409).json({ 
+        error: "Ya existe un reporte similar reciente para esta casa",
+        reporte: reporteRecienteEnCasa
+      });
+    }
+
+    const nuevoReporte = new Reporte({
+      fraccId: req.params.fraccId,
+      numeroCasa: numeroCasa.toString(),
+      nombre: nombre,
+      motivo: motivo,
+      foto: foto,
+      estatus: estatus.toLowerCase(),
+      autorizadoPor: residenteNombre || (estatus === 'expirado' ? 'Sistema' : 'Usuario'),
+      autorizadoPorId: residenteId || null, // Guardar el ID del residente
+      tiempo: new Date(),
+      notificationId: notificationId
+    });
+
+    let reporteGuardado;
+    try {
+      reporteGuardado = await nuevoReporte.save();
+    } catch (mongoError) {
+      if (mongoError.code === 11000) {
+        return res.status(409).json({ 
+          error: "Ya existe un reporte idéntico. Solo se puede procesar uno a la vez.",
+          details: "Reporte duplicado bloqueado por filtro milimétrico"
         });
       }
-
-      // Crear reporte sin notificationId
-      reporteGuardado = await Reporte.create({
-        fraccId: req.params.fraccId,
-        numeroCasa: numeroCasa.toString(),
-        nombre: nombre,
-        motivo: motivo,
-        foto: foto,
-        estatus: estatus.toLowerCase(),
-        autorizadoPor: residenteNombre || (estatus === 'expirado' ? 'Sistema' : 'Usuario'),
-        autorizadoPorId: residenteId || null,
-        tiempo: new Date()
-      });
+      throw mongoError;
     }
 
     const io = req.app.get('io');
@@ -183,12 +162,11 @@ router.post("/:fraccId/crear", validarFraccionamiento, async (req, res) => {
       }, 10000);
     }
 
-    res.status(200).json({
+    res.status(201).json({
       success: true,
-      mensaje: `Notificación procesada como ${estatus.toUpperCase()}`,
+      mensaje: `Reporte creado como ${estatus.toUpperCase()}`,
       reporte: reporteGuardado,
-      puertaAbierta: estatus.toLowerCase() === 'aceptado',
-      accion: fueActualizado ? 'actualizado' : 'creado'
+      puertaAbierta: estatus.toLowerCase() === 'aceptado'
     });
 
   } catch (error) {

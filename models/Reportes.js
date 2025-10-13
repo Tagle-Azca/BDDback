@@ -17,7 +17,8 @@ const reportesSchema = new mongoose.Schema({
     required: true,
     default: 'pendiente'
   },
-  autorizadoPor: { type: String, required: true }, 
+  autorizadoPor: { type: String, required: true },
+  autorizadoPorId: { type: String }, // ID del residente que contestó
   fechaAutorizacion: { type: Date, default: Date.now },
   notificationId: { type: String, unique: true, sparse: true }
 });
