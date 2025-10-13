@@ -57,7 +57,16 @@ router.post("/:fraccId/casas/:numero/visitas",
 
       await req.fraccionamiento.save();
 
-      
+      enviarNotificacionVisita(
+        req.params.fraccId,
+        req.params.numero,
+        nombreVisitante,
+        motivo,
+        fotoUrl
+      ).catch(() => {
+      });
+
+      res.status(201).json({ success: true });
 
     } catch (error) {
       manejarError(res, error, "Error al registrar visita");
