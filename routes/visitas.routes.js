@@ -57,49 +57,7 @@ router.post("/:fraccId/casas/:numero/visitas",
 
       await req.fraccionamiento.save();
 
-      try {
-        const resultadoNotificacion = await enviarNotificacionVisita(
-          req.params.fraccId,
-          req.params.numero,
-          nombreVisitante,
-          motivo,
-          fotoUrl
-        );
-
-        if (resultadoNotificacion.success) {
-          res.status(201).json({
-            mensaje: "Visita registrada con éxito y residentes notificados",
-            foto: fotoUrl,
-            visitante: nombreVisitante,
-            motivo: motivo,
-            casa: req.params.numero,
-            fraccId: req.params.fraccId,
-            notificacionEnviada: true
-          });
-        } else {
-          res.status(201).json({
-            mensaje: "Visita registrada con éxito (error al notificar residentes)",
-            foto: fotoUrl,
-            visitante: nombreVisitante,
-            motivo: motivo,
-            casa: req.params.numero,
-            fraccId: req.params.fraccId,
-            notificacionEnviada: false,
-            errorNotificacion: resultadoNotificacion.error
-          });
-        }
-      } catch (notificationError) {
-        res.status(201).json({
-          mensaje: "Visita registrada con éxito (error al notificar residentes)",
-          foto: fotoUrl,
-          visitante: nombreVisitante,
-          motivo: motivo,
-          casa: req.params.numero,
-          fraccId: req.params.fraccId,
-          notificacionEnviada: false,
-          errorNotificacion: notificationError.message
-        });
-      }
+      
 
     } catch (error) {
       manejarError(res, error, "Error al registrar visita");
