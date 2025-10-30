@@ -8,7 +8,27 @@ const router = express.Router();
 
 router.post("/", async (req, res) => {
   try {
-    const hashedPassword = await bcrypt.hash(req.body.contrasena, 10);
+    const { nombre, usuario, contrasena, direccion, correo, telefono } = req.body;
+
+    // Validaciones de longitud mínima (5 caracteres)
+    const camposMinimos = { nombre, usuario, contrasena, direccion };
+    for (const [campo, valor] of Object.entries(camposMinimos)) {
+      if (!valor || valor.trim().length < 5) {
+        return res.status(400).json({
+          error: `El campo ${campo} debe tener al menos 5 caracteres`
+        });
+      }
+    }
+
+    // Validaciones de longitud máxima
+    if (nombre.length > 30) return res.status(400).json({ error: "El nombre no puede exceder 30 caracteres" });
+    if (usuario.length > 30) return res.status(400).json({ error: "El usuario no puede exceder 30 caracteres" });
+    if (contrasena.length > 30) return res.status(400).json({ error: "La contraseña no puede exceder 30 caracteres" });
+    if (direccion.length > 70) return res.status(400).json({ error: "La dirección no puede exceder 70 caracteres" });
+    if (correo && correo.length > 64) return res.status(400).json({ error: "El correo no puede exceder 64 caracteres" });
+    if (telefono && telefono.length > 15) return res.status(400).json({ error: "El teléfono no puede exceder 15 caracteres" });
+
+    const hashedPassword = await bcrypt.hash(contrasena, 10);
     const nuevoFraccionamiento = new Fraccionamiento({
       ...req.body,
       contrasena: hashedPassword,
@@ -65,6 +85,78 @@ router.put("/:fraccId/toggle", validarFraccionamiento, async (req, res) => {
     });
   } catch (error) {
     manejarError(res, error, "Error al actualizar estado del fraccionamiento");
+  }
+});
+
+router.put("/update/:fraccId", validarFraccionamiento, async (req, res) => {
+  try {
+    const { nombre, usuario, contrasena, direccion, correo, telefono } = req.body;
+
+    // Validar campos si se proporcionan
+    if (nombre !== undefined) {
+      if (nombre.trim().length < 5) {
+        return res.status(400).json({ error: "El nombre debe tener al menos 5 caracteres" });
+      }
+      if (nombre.length > 30) {
+        return res.status(400).json({ error: "El nombre no puede exceder 30 caracteres" });
+      }
+      req.fraccionamiento.nombre = nombre;
+    }
+
+    if (usuario !== undefined) {
+      if (usuario.trim().length < 5) {
+        return res.status(400).json({ error: "El usuario debe tener al menos 5 caracteres" });
+      }
+      if (usuario.length > 30) {
+        return res.status(400).json({ error: "El usuario no puede exceder 30 caracteres" });
+      }
+      req.fraccionamiento.usuario = usuario;
+    }
+
+    if (direccion !== undefined) {
+      if (direccion.trim().length < 5) {
+        return res.status(400).json({ error: "La dirección debe tener al menos 5 caracteres" });
+      }
+      if (direccion.length > 70) {
+        return res.status(400).json({ error: "La dirección no puede exceder 70 caracteres" });
+      }
+      req.fraccionamiento.direccion = direccion;
+    }
+
+    if (correo !== undefined && correo.trim() !== "") {
+      if (correo.length > 64) {
+        return res.status(400).json({ error: "El correo no puede exceder 64 caracteres" });
+      }
+      req.fraccionamiento.correo = correo;
+    }
+
+    if (telefono !== undefined && telefono.trim() !== "") {
+      if (telefono.length > 15) {
+        return res.status(400).json({ error: "El teléfono no puede exceder 15 caracteres" });
+      }
+      req.fraccionamiento.telefono = telefono;
+    }
+
+    // Si se proporciona contraseña, validar y hashearla
+    if (contrasena !== undefined && contrasena.trim() !== "") {
+      if (contrasena.trim().length < 5) {
+        return res.status(400).json({ error: "La contraseña debe tener al menos 5 caracteres" });
+      }
+      if (contrasena.length > 30) {
+        return res.status(400).json({ error: "La contraseña no puede exceder 30 caracteres" });
+      }
+      const hashedPassword = await bcrypt.hash(contrasena, 10);
+      req.fraccionamiento.contrasena = hashedPassword;
+    }
+
+    await req.fraccionamiento.save();
+
+    res.status(200).json({
+      mensaje: "Fraccionamiento actualizado exitosamente",
+      fraccionamiento: req.fraccionamiento
+    });
+  } catch (error) {
+    manejarError(res, error, "Error al actualizar fraccionamiento");
   }
 });
 
