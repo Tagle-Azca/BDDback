@@ -3,13 +3,14 @@ const fetch = require("node-fetch");
 const PlayerRegistry = require("../models/playerRegistry");
 const { manejarError } = require('../utils/helpers');
 const { validarFraccionamiento, validarCasa } = require('../middleware/validators');
+const { sanitizeName } = require('../utils/stringUtils');
 
 const router = express.Router();
 
 router.post("/:fraccId/casas/:numero/residentes", validarFraccionamiento, validarCasa, async (req, res) => {
   try {
     const { nombre } = req.body;
-    req.casa.residentes.push({ nombre });
+    req.casa.residentes.push({ nombre: sanitizeName(nombre) });
     await req.fraccionamiento.save();
     res.status(201).json(req.fraccionamiento);
   } catch (error) {
@@ -96,7 +97,7 @@ router.put("/:fraccId/casas/:numero/residentes/:residenteId",
         return res.status(404).json({ error: "Residente no encontrado" });
       }
 
-      residente.nombre = nombre.trim();
+      residente.nombre = sanitizeName(nombre);
 
       await req.fraccionamiento.save();
 

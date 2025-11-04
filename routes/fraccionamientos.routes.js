@@ -3,12 +3,13 @@ const bcrypt = require("bcrypt");
 const Fraccionamiento = require("../models/fraccionamiento");
 const { validarCampos, manejarError, generarQRLinks } = require('../utils/helpers');
 const { validarFraccionamiento } = require('../middleware/validators');
+const { sanitizeGeneralText, sanitizeEmail } = require('../utils/stringUtils');
 
 const router = express.Router();
 
 router.post("/", async (req, res) => {
   try {
-    const { nombre, usuario, contrasena, direccion, correo, telefono } = req.body;
+    const { nombre, usuario, contrasena, direccion, correo, telefono, periodoMeses } = req.body;
 
     // Validaciones de longitud mínima (5 caracteres)
     const camposMinimos = { nombre, usuario, contrasena, direccion };
@@ -29,9 +30,19 @@ router.post("/", async (req, res) => {
     if (telefono && telefono.length > 15) return res.status(400).json({ error: "El teléfono no puede exceder 15 caracteres" });
 
     const hashedPassword = await bcrypt.hash(contrasena, 10);
+
+    const mesesSuscripcion = periodoMeses || 12;
+    const fechaExpiracion = new Date();
+    fechaExpiracion.setMonth(fechaExpiracion.getMonth() + parseInt(mesesSuscripcion));
+    fechaExpiracion.setHours(23, 59, 59, 999);
+
     const nuevoFraccionamiento = new Fraccionamiento({
       ...req.body,
+      nombre: sanitizeGeneralText(nombre),
+      direccion: sanitizeGeneralText(direccion),
+      correo: correo ? sanitizeEmail(correo) : '',
       contrasena: hashedPassword,
+      fechaExpiracion: fechaExpiracion,
     });
 
     await nuevoFraccionamiento.save();
@@ -90,7 +101,7 @@ router.put("/:fraccId/toggle", validarFraccionamiento, async (req, res) => {
 
 router.put("/update/:fraccId", validarFraccionamiento, async (req, res) => {
   try {
-    const { nombre, usuario, contrasena, direccion, correo, telefono } = req.body;
+    const { nombre, usuario, contrasena, direccion, correo, telefono, extenderMeses } = req.body;
 
     // Validar campos si se proporcionan
     if (nombre !== undefined) {
@@ -100,7 +111,7 @@ router.put("/update/:fraccId", validarFraccionamiento, async (req, res) => {
       if (nombre.length > 30) {
         return res.status(400).json({ error: "El nombre no puede exceder 30 caracteres" });
       }
-      req.fraccionamiento.nombre = nombre;
+      req.fraccionamiento.nombre = sanitizeGeneralText(nombre);
     }
 
     if (usuario !== undefined) {
@@ -120,14 +131,14 @@ router.put("/update/:fraccId", validarFraccionamiento, async (req, res) => {
       if (direccion.length > 70) {
         return res.status(400).json({ error: "La dirección no puede exceder 70 caracteres" });
       }
-      req.fraccionamiento.direccion = direccion;
+      req.fraccionamiento.direccion = sanitizeGeneralText(direccion);
     }
 
     if (correo !== undefined && correo.trim() !== "") {
       if (correo.length > 64) {
         return res.status(400).json({ error: "El correo no puede exceder 64 caracteres" });
       }
-      req.fraccionamiento.correo = correo;
+      req.fraccionamiento.correo = sanitizeEmail(correo);
     }
 
     if (telefono !== undefined && telefono.trim() !== "") {
@@ -147,6 +158,14 @@ router.put("/update/:fraccId", validarFraccionamiento, async (req, res) => {
       }
       const hashedPassword = await bcrypt.hash(contrasena, 10);
       req.fraccionamiento.contrasena = hashedPassword;
+    }
+
+    if (extenderMeses && parseInt(extenderMeses) > 0) {
+      const fechaActual = req.fraccionamiento.fechaExpiracion || new Date();
+      const nuevaFecha = new Date(fechaActual);
+      nuevaFecha.setMonth(nuevaFecha.getMonth() + parseInt(extenderMeses));
+      nuevaFecha.setHours(23, 59, 59, 999);
+      req.fraccionamiento.fechaExpiracion = nuevaFecha;
     }
 
     await req.fraccionamiento.save();
