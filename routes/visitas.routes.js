@@ -3,7 +3,7 @@ const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
 const cloudinary = require("../config/cloudinary");
-const { enviarNotificacionVisita } = require("../controllers/Visitas");
+const { enviarNotificacionVisita } = require("../controllers/visitas.controller");
 const { manejarError } = require('../utils/helpers');
 const { validarFraccionamiento, validarCasa } = require('../middleware/validators');
 
