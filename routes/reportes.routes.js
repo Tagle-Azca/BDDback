@@ -1,41 +1,37 @@
 const express = require("express");
 const router = express.Router();
-const Reporte = require("../models/Reportes");
-const Fraccionamiento = require("../models/fraccionamiento");
-const mongoose = require("mongoose");
-
-const manejarError = (res, error, mensaje = "Error interno del servidor", status = 500) => {
-  res.status(status).json({ error: mensaje });
-};
-
-const validarFraccionamiento = async (req, res, next) => {
-  try {
-    const fracc = await Fraccionamiento.findById(req.params.fraccId);
-    
-    if (!fracc) {
-      return res.status(404).json({ error: "Fraccionamiento no encontrado" });
-    }
-    
-    req.fraccionamiento = fracc;
-    next();
-  } catch (error) {
-    res.status(500).json({ error: "Error interno del servidor" });
-  }
-};
-
-const validarUsuarioEnFraccionamiento = (fraccionamiento, residenteId) => {
-  for (const residencia of fraccionamiento.residencias) {
-    const residente = residencia.residentes.find(r => 
-      r._id.toString() === residenteId && r.activo === true
-    );
-    if (residente) return true;
-  }
-  return false;
-};
+const Reporte = require("../models/reporte.model");
+const { validarFraccionamiento, validarUsuarioEnFraccionamiento } = require('../middleware/validators');
+const { procesarReporte } = require('../services/reporte.service');
+const { manejarError, calcularEstadisticasReportes } = require('../utils/helpers');
+const { ESTADOS_VALIDOS, esEstatusValido, REPORTE_STATUS } = require('../constants/reporte.constants');
 
 router.post("/:fraccId/crear", validarFraccionamiento, async (req, res) => {
   try {
-    const { 
+    const { notificationId, nombre, motivo, foto, numeroCasa, estatus, residenteId, residenteNombre, clientTimestamp } = req.body;
+
+    if (!nombre || !motivo || !numeroCasa || !estatus) {
+      return res.status(400).json({
+        error: "Datos incompletos: nombre, motivo, numeroCasa y estatus son obligatorios"
+      });
+    }
+
+    if (!esEstatusValido(estatus)) {
+      return res.status(400).json({
+        error: `Estatus inválido. Debe ser: ${ESTADOS_VALIDOS.join(', ')}`
+      });
+    }
+
+    if (estatus !== REPORTE_STATUS.EXPIRADO && residenteId) {
+      const usuarioValido = validarUsuarioEnFraccionamiento(req.fraccionamiento, residenteId);
+      if (!usuarioValido) {
+        return res.status(403).json({
+          error: "Residente no autorizado en este fraccionamiento"
+        });
+      }
+    }
+
+    const resultado = await procesarReporte({
       notificationId,
       nombre,
       motivo,
@@ -43,155 +39,25 @@ router.post("/:fraccId/crear", validarFraccionamiento, async (req, res) => {
       numeroCasa,
       estatus,
       residenteId,
-      residenteNombre
-    } = req.body;
-
-    if (!nombre || !motivo || !numeroCasa || !estatus) {
-      return res.status(400).json({ 
-        error: "Datos incompletos: nombre, motivo, numeroCasa y estatus son obligatorios" 
-      });
-    }
-
-    const estatusValidos = ['aceptado', 'rechazado', 'expirado'];
-    if (!estatusValidos.includes(estatus.toLowerCase())) {
-      return res.status(400).json({ 
-        error: "Estatus inválido. Debe ser: aceptado, rechazado o expirado" 
-      });
-    }
-
-    if (estatus !== 'expirado' && residenteId) {
-      const usuarioValido = validarUsuarioEnFraccionamiento(req.fraccionamiento, residenteId);
-      if (!usuarioValido) {
-        return res.status(403).json({ 
-          error: "Residente no autorizado en este fraccionamiento" 
-        });
-      }
-    }
-
-    let reporteGuardado;
-    let fueActualizado = false;
-
-    // 🔄 NUEVA LÓGICA: Buscar si existe un reporte con este notificationId
-    if (notificationId) {
-      const reporteExistente = await Reporte.findOne({ notificationId });
-
-      if (reporteExistente) {
-        // Si ya fue contestada (no está pendiente), rechazar
-        if (reporteExistente.estatus !== 'pendiente') {
-          return res.status(409).json({
-            error: "Esta notificación ya fue contestada por otro residente",
-            yaContestada: true,
-            reporte: reporteExistente,
-            respondidoPor: reporteExistente.autorizadoPor,
-            estatus: reporteExistente.estatus.toUpperCase()
-          });
-        }
-
-        // ✅ Si está PENDIENTE, ACTUALIZAR en lugar de crear uno nuevo
-        console.log(`🔄 Actualizando reporte pendiente: ${notificationId} -> ${estatus}`);
-        reporteExistente.estatus = estatus.toLowerCase();
-        reporteExistente.autorizadoPor = residenteNombre || 'Usuario';
-        reporteExistente.autorizadoPorId = residenteId || null;
-        reporteExistente.tiempo = new Date();
-        reporteGuardado = await reporteExistente.save();
-        fueActualizado = true;
-
-        console.log(`✅ Reporte actualizado exitosamente de pendiente a ${estatus}`);
-      } else {
-        // No existe, crear uno nuevo (caso normal de primera respuesta)
-        reporteGuardado = await Reporte.create({
-          fraccId: req.params.fraccId,
-          numeroCasa: numeroCasa.toString(),
-          nombre: nombre,
-          motivo: motivo,
-          foto: foto,
-          estatus: estatus.toLowerCase(),
-          autorizadoPor: residenteNombre || (estatus === 'expirado' ? 'Sistema' : 'Usuario'),
-          autorizadoPorId: residenteId || null,
-          tiempo: new Date(),
-          notificationId: notificationId
-        });
-      }
-    } else {
-      // Sin notificationId, validar duplicados por tiempo
-      const cincuMinutosAtras = new Date(Date.now() - 5 * 60 * 1000);
-      const reporteRecienteEnCasa = await Reporte.findOne({
-        fraccId: req.params.fraccId,
-        numeroCasa: numeroCasa.toString(),
-        nombre: nombre,
-        motivo: motivo,
-        tiempo: { $gte: cincuMinutosAtras }
-      });
-
-      if (reporteRecienteEnCasa) {
-        return res.status(409).json({
-          error: "Ya existe un reporte similar reciente para esta casa",
-          reporte: reporteRecienteEnCasa
-        });
-      }
-
-      // Crear reporte sin notificationId
-      reporteGuardado = await Reporte.create({
-        fraccId: req.params.fraccId,
-        numeroCasa: numeroCasa.toString(),
-        nombre: nombre,
-        motivo: motivo,
-        foto: foto,
-        estatus: estatus.toLowerCase(),
-        autorizadoPor: residenteNombre || (estatus === 'expirado' ? 'Sistema' : 'Usuario'),
-        autorizadoPorId: residenteId || null,
-        tiempo: new Date()
-      });
-    }
-
-    const io = req.app.get('io');
-    if (io) {
-      const room = `casa_${numeroCasa}_${req.params.fraccId}`;
-
-      io.to(room).emit('notificacionContestada', {
-        reporteId: reporteGuardado._id.toString(),
-        notificationId: reporteGuardado.notificationId,
-        estatus: estatus.toUpperCase(),
-        autorizadoPor: reporteGuardado.autorizadoPor,
-        autorizadoPorId: residenteId,
-        numeroCasa: numeroCasa,
-        fraccId: req.params.fraccId,
-        timestamp: new Date(),
-        action: 'notification_answered',
-        mensaje: `${residenteNombre || 'Un residente'} ${estatus === 'aceptado' ? 'aceptó' : 'rechazó'} la solicitud`,
-        visitante: reporteGuardado.nombre,
-        motivo: reporteGuardado.motivo
-      });
-
-    }
-
-    if (estatus.toLowerCase() === 'aceptado') {
-      await Fraccionamiento.updateOne(
-        { _id: req.params.fraccId }, 
-        { $set: { puerta: true } }
-      );
-      
-      setTimeout(async () => {
-        try {
-          await Fraccionamiento.updateOne(
-            { _id: req.params.fraccId }, 
-            { $set: { puerta: false } }
-          );
-        } catch (error) {
-          console.error('Error closing door:', error);
-        }
-      }, 10000);
-    }
+      residenteNombre,
+      fraccId: req.params.fraccId,
+      clientTimestamp,
+      io: req.app.get('io')
+    });
 
     res.status(200).json({
       success: true,
       mensaje: `Notificación procesada como ${estatus.toUpperCase()}`,
-      reporte: reporteGuardado,
-      puertaAbierta: estatus.toLowerCase() === 'aceptado',
-      accion: fueActualizado ? 'actualizado' : 'creado'
+      reporte: resultado.reporte,
+      puertaAbierta: resultado.puertaAbierta,
+      accion: resultado.fueActualizado ? 'actualizado' : 'creado'
     });
 
   } catch (error) {
+    if (error.code === 'ALREADY_ANSWERED' || error.code === 'DUPLICATE_REPORT') {
+      return res.status(error.status).json(error.data);
+    }
+
     manejarError(res, error, "Error al crear reporte");
   }
 });
@@ -204,31 +70,26 @@ router.get("/:fraccId", async (req, res) => {
     const filtro = { fraccId: fraccId };
 
     if (incluirExpiradas.toLowerCase() === 'false') {
-      filtro.estatus = { $nin: ['expirado'] };
+      filtro.estatus = { $nin: [REPORTE_STATUS.EXPIRADO] };
     }
-    
+
     if (casa) filtro.numeroCasa = casa;
     if (desde) filtro.tiempo = { $gte: new Date(desde) };
     if (hasta) filtro.tiempo = { ...filtro.tiempo, $lte: new Date(hasta) };
-    
+
     const reportes = await Reporte.find(filtro)
       .sort({ tiempo: -1 })
       .limit(parseInt(limite));
 
-    const estadisticas = {
-      total: reportes.length,
-      aceptados: reportes.filter(r => r.estatus === 'aceptado').length,
-      rechazados: reportes.filter(r => r.estatus === 'rechazado').length,
-      expirados: reportes.filter(r => r.estatus === 'expirado').length
-    };
-    
+    const estadisticas = calcularEstadisticasReportes(reportes);
+
     res.json({
       success: true,
       fraccionamiento: fraccId,
       reportes: reportes,
       estadisticas: estadisticas
     });
-    
+
   } catch (error) {
     manejarError(res, error, "Error al obtener reportes");
   }
@@ -244,24 +105,19 @@ router.get("/:fraccId/casa/:numeroCasa", async (req, res) => {
       numeroCasa: numeroCasa.toString()
     };
     if (incluirExpiradas.toLowerCase() === 'false') {
-      filtro.estatus = { $nin: ['expirado'] };
+      filtro.estatus = { $nin: [REPORTE_STATUS.EXPIRADO] };
     }
-    
+
     if (desde) {
       filtro.tiempo = { $gte: new Date(desde) };
     }
-    
+
     const reportes = await Reporte.find(filtro)
       .sort({ tiempo: -1 })
       .limit(parseInt(limite));
-    
-    const estadisticas = {
-      total: reportes.length,
-      aceptados: reportes.filter(r => r.estatus === 'aceptado').length,
-      rechazados: reportes.filter(r => r.estatus === 'rechazado').length,
-      expirados: reportes.filter(r => r.estatus === 'expirado').length
-    };
-    
+
+    const estadisticas = calcularEstadisticasReportes(reportes);
+
     res.json({
       success: true,
       casa: numeroCasa,
@@ -269,7 +125,7 @@ router.get("/:fraccId/casa/:numeroCasa", async (req, res) => {
       reportes: reportes,
       estadisticas: estadisticas
     });
-    
+
   } catch (error) {
     manejarError(res, error, "Error al obtener historial de casa");
   }
@@ -278,18 +134,18 @@ router.get("/:fraccId/casa/:numeroCasa", async (req, res) => {
 router.get("/reporte/:reporteId", async (req, res) => {
   try {
     const { reporteId } = req.params;
-    
+
     const reporte = await Reporte.findById(reporteId);
-    
+
     if (!reporte) {
       return res.status(404).json({ error: "Reporte no encontrado" });
     }
-    
+
     res.json({
       success: true,
       reporte: reporte
     });
-    
+
   } catch (error) {
     manejarError(res, error, "Error al obtener reporte");
   }
@@ -299,98 +155,36 @@ router.put("/reporte/:reporteId", async (req, res) => {
   try {
     const { reporteId } = req.params;
     const { estatus, residenteNombre } = req.body;
-    
-    const estatusValidos = ['aceptado', 'rechazado', 'expirado'];
-    if (!estatusValidos.includes(estatus.toLowerCase())) {
-      return res.status(400).json({ 
-        error: "Estatus inválido. Debe ser: aceptado, rechazado o expirado" 
+
+    if (!esEstatusValido(estatus)) {
+      return res.status(400).json({
+        error: `Estatus inválido. Debe ser: ${ESTADOS_VALIDOS.join(', ')}`
       });
     }
-    
+
     const reporte = await Reporte.findByIdAndUpdate(
       reporteId,
-      { 
+      {
         estatus: estatus.toLowerCase(),
         autorizadoPor: residenteNombre || 'Sistema',
         tiempo: new Date()
       },
       { new: true }
     );
-    
+
     if (!reporte) {
       return res.status(404).json({ error: "Reporte no encontrado" });
     }
-    
+
     res.json({
       success: true,
       mensaje: "Reporte actualizado",
       reporte: reporte
     });
-    
+
   } catch (error) {
     manejarError(res, error, "Error al actualizar reporte");
   }
 });
 
-async function enviarNotificacionRetiroBanner(fraccId, numeroCasa, notificationId, estatus, residenteNombre) {
-  try {
-    const Fraccionamiento = require("../models/fraccionamiento");
-    const fraccionamiento = await Fraccionamiento.findById(fraccId);
-
-    if (!fraccionamiento) return;
-
-    const casa = fraccionamiento.residencias.find(r => r.numero.toString() === numeroCasa.toString());
-    if (!casa) return;
-
-    const residentesActivos = casa.residentes.filter(r => r.activo && r.playerId);
-    if (residentesActivos.length === 0) return;
-
-    const playerIds = [...new Set(residentesActivos
-      .map(residente => residente.playerId)
-      .filter(id => id && id.trim() !== ''))];
-
-
-    if (playerIds.length === 0) {
-      return;
-    }
-
-    const payload = {
-      app_id: process.env.ONESIGNAL_APP_ID,
-      include_player_ids: playerIds,
-      contents: { "en": "Banner removal" },
-      headings: { "en": "Notification Update" },
-      content_available: true,
-      priority: 10,
-      silent: true,
-      data: {
-        type: 'banner_removal',
-        tipo: 'banner_removal',
-        notificationId: notificationId,
-        notification_id: notificationId,
-        estatus: estatus,
-        autorizadoPor: residenteNombre,
-        action: 'remove_notification_banner',
-        timestamp: Date.now().toString()
-      },
-      ios_sound: "",
-      android_channel_id: "silent_notifications",
-      mutable_content: true
-    };
-
-    const response = await fetch("https://onesignal.com/api/v1/notifications", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Basic ${process.env.ONESIGNAL_API_KEY}`
-      },
-      body: JSON.stringify(payload),
-    });
-
-    const result = await response.json();
-
-  } catch (error) {
-  }
-}
-
 module.exports = router;
-module.exports.enviarNotificacionRetiroBanner = enviarNotificacionRetiroBanner;

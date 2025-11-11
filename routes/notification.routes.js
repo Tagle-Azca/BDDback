@@ -2,12 +2,13 @@ const express = require("express");
 const router = express.Router();
 const fetch = require("node-fetch");
 const crypto = require("crypto");
-const PlayerRegistry = require("../models/playerRegistry");
-const Reporte = require("../models/Reportes");
-const Fraccionamiento = require("../models/fraccionamiento");
+const PlayerRegistry = require("../models/player-registry.model");
+const Reporte = require("../models/reporte.model");
+const Fraccionamiento = require("../models/fraccionamiento.model");
+const { crearReportePendiente, buscarReportesRecientes, marcarReporteComoExpirado } = require('../services/reporte.service');
 
 router.post("/send-notification", async (req, res) => {
-  console.log('📲 POST /send-notification - Inicio');
+  console.log('POST /send-notification - Inicio');
   console.log('   Body:', JSON.stringify(req.body, null, 2));
   try {
     const { title, body, fraccId, residencia, foto } = req.body;
@@ -19,20 +20,20 @@ router.post("/send-notification", async (req, res) => {
 
     const fraccionamiento = await Fraccionamiento.findById(fraccId);
     if (!fraccionamiento) {
-      return res.status(404).json({ 
+      return res.status(404).json({
         error: "Fraccionamiento no encontrado"
       });
     }
 
     const casa = fraccionamiento.residencias.find(r => r.numero.toString() === residencia.toString());
     if (!casa) {
-      return res.status(404).json({ 
+      return res.status(404).json({
         error: "Casa no encontrada en este fraccionamiento"
       });
     }
 
     if (!casa.activa) {
-      return res.status(403).json({ 
+      return res.status(403).json({
         error: "Casa desactivada, no puede recibir notificaciones"
       });
     }
@@ -51,18 +52,12 @@ router.post("/send-notification", async (req, res) => {
 
 
     if (playerIds.length === 0) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         error: "No hay Player IDs válidos para esta casa"
       });
     }
 
-    const cincoMinutosAtras = new Date(Date.now() - 5 * 60 * 1000);
-    const reportesRecientes = await Reporte.find({
-      fraccId: fraccId,
-      numeroCasa: residencia.toString(),
-      nombre: title,
-      tiempo: { $gte: cincoMinutosAtras }
-    }).sort({ tiempo: -1 });
+    const reportesRecientes = await buscarReportesRecientes(fraccId, residencia, title, 5);
 
 
     if (reportesRecientes.length >= 3) {
@@ -108,7 +103,7 @@ router.post("/send-notification", async (req, res) => {
     }
     };
 
-    console.log('📤 Enviando notificación a OneSignal...');
+    console.log('Enviando notificación a OneSignal...');
     console.log('   Player IDs:', playerIds);
     console.log('   Notification ID:', notificationId);
     console.log('   Security Hash:', securityHash);
@@ -123,44 +118,32 @@ router.post("/send-notification", async (req, res) => {
     });
 
     const resultado = await response.json();
-    console.log('✅ Respuesta de OneSignal:', JSON.stringify(resultado, null, 2));
-
-    // Guardar notificación como pendiente inmediatamente
-    await Reporte.create({
-      notificationId: notificationId,
+    console.log('Respuesta de OneSignal:', JSON.stringify(resultado, null, 2));
+    await crearReportePendiente({
+      notificationId,
       nombre: title,
       motivo: body,
-      foto: foto || '',
-      numeroCasa: residencia.toString(),
-      estatus: 'pendiente',
-      fraccId: fraccId,
-      fechaCreacion: new Date(),
-      autorizadoPor: 'Pendiente',
-      autorizadoPorId: null,
-      tiempo: new Date()
+      foto,
+      numeroCasa: residencia,
+      fraccId
     });
+
+    const io = req.app.get('io');
 
     setTimeout(async () => {
       try {
-        const reporteExistente = await Reporte.findOne({ notificationId });
+        const reporteExpirado = await marcarReporteComoExpirado(notificationId);
 
-        if (reporteExistente && reporteExistente.estatus === 'pendiente') {
-          reporteExistente.estatus = 'expirado';
-          reporteExistente.residenteNombre = 'Sistema - Expirada automáticamente';
-          reporteExistente.autorizadoPor = 'Sistema - Expiración automática';
-          await reporteExistente.save();
-
-          if (global.io) {
-            const room = `casa_${residencia}_${fraccId}`;
-            global.io.to(room).emit('notificacionExpirada', {
-              notificationId: notificationId,
-              action: 'expire_notification',
-              mensaje: 'La solicitud de acceso ha expirado por falta de respuesta',
-              numeroCasa: residencia.toString(),
-              fraccId: fraccId.toString(),
-              timestamp: new Date()
-            });
-          }
+        if (reporteExpirado && io) {
+          const room = `casa_${residencia}_${fraccId}`;
+          io.to(room).emit('notificacionExpirada', {
+            notificationId: notificationId,
+            action: 'expire_notification',
+            mensaje: 'La solicitud de acceso ha expirado por falta de respuesta',
+            numeroCasa: residencia.toString(),
+            fraccId: fraccId.toString(),
+            timestamp: new Date()
+          });
         }
 
       } catch (error) {
@@ -168,16 +151,16 @@ router.post("/send-notification", async (req, res) => {
       }
     }, 5 * 60 * 1000);
 
-    res.json({ 
+    res.json({
       success: true,
-      mensaje: "Notificación enviada", 
+      mensaje: "Notificación enviada",
       notificationId: notificationId,
       oneSignalId: resultado.id,
       dispositivos: playerIds.length
     });
 
   } catch (error) {
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
       error: "Error al enviar notificación",
       details: error.message

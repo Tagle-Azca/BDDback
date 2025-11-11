@@ -8,12 +8,10 @@ router.post("/:fraccId/casas", validarFraccionamiento, async (req, res) => {
   try {
     const { numero, tipo } = req.body;
 
-    // Validar número
     if (!numero || numero.toString().trim().length === 0) {
       return res.status(400).json({ error: "El número de casa es requerido" });
     }
 
-    // Validar tipo si se proporciona
     if (tipo !== undefined && tipo.trim() !== "") {
       if (tipo.trim().length < 3) {
         return res.status(400).json({ error: "El tipo debe tener al menos 3 caracteres" });
@@ -83,12 +81,10 @@ router.put("/:fraccId/casas/:numero", validarFraccionamiento, validarCasa, async
   try {
     const { nuevoNumero, tipo } = req.body;
 
-    // Validar que se proporcione al menos un campo
     if (!nuevoNumero && !tipo) {
       return res.status(400).json({ error: "Debe proporcionar al menos el número o tipo de casa" });
     }
 
-    // Si se proporciona un nuevo número, verificar que no exista
     if (nuevoNumero && nuevoNumero !== req.casa.numero) {
       const casaExistente = req.fraccionamiento.residencias.find(
         c => c.numero === nuevoNumero
@@ -99,7 +95,6 @@ router.put("/:fraccId/casas/:numero", validarFraccionamiento, validarCasa, async
       req.casa.numero = nuevoNumero;
     }
 
-    // Actualizar el tipo si se proporciona
     if (tipo && tipo.trim() !== "") {
       if (tipo.trim().length < 3) {
         return res.status(400).json({ error: "El tipo debe tener al menos 3 caracteres" });

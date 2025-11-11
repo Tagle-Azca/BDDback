@@ -24,7 +24,24 @@ const validarCasa = (req, res, next) => {
   next();
 };
 
+/**
+ * Valida si un residente está activo en un fraccionamiento
+ * @param {Object} fraccionamiento - Objeto del fraccionamiento
+ * @param {string} residenteId - ID del residente a validar
+ * @returns {boolean} - true si el residente está activo en el fraccionamiento
+ */
+const validarUsuarioEnFraccionamiento = (fraccionamiento, residenteId) => {
+  for (const residencia of fraccionamiento.residencias) {
+    const residente = residencia.residentes.find(r =>
+      r._id.toString() === residenteId && r.activo === true
+    );
+    if (residente) return true;
+  }
+  return false;
+};
+
 module.exports = {
   validarFraccionamiento,
-  validarCasa
+  validarCasa,
+  validarUsuarioEnFraccionamiento
 };

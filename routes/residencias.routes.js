@@ -1,7 +1,7 @@
 const express = require("express");
 const { v4: uuidv4 } = require("uuid");
-const Residencias = require("../models/Residencias");
-const PlayerRegistry = require("../models/playerRegistry");
+const Residencias = require("../models/residencia.model");
+const PlayerRegistry = require("../models/player-registry.model");
 const router = express.Router();
 router.post("/register-house", async (req, res) => {
   const { fraccionamiento, casaDatos } = req.body;
@@ -139,7 +139,7 @@ router.get("/validate-user/:userId", async (req, res) => {
       });
     }
 
-    const Fraccionamiento = require("../models/fraccionamiento");
+    const Fraccionamiento = require("../models/fraccionamiento.model");
     const fraccionamiento = await Fraccionamiento.findById(fraccId);
 
     if (!fraccionamiento) {

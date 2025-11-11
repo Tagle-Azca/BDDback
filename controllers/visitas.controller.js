@@ -1,5 +1,5 @@
 const axios = require("axios");
-const Fraccionamiento = require("../models/fraccionamiento");
+const Fraccionamiento = require("../models/fraccionamiento.model");
 
 const enviarNotificacionVisita = async (fraccId, residencia, nombre, motivo, foto) => {
   try {

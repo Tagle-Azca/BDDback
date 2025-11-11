@@ -1,4 +1,4 @@
-const Fraccionamiento = require("../models/fraccionamiento");
+const Fraccionamiento = require("../models/fraccionamiento.model");
 
 const validarCampos = (campos, res) => {
   for (const [campo, valor] of Object.entries(campos)) {
@@ -37,10 +37,28 @@ const generarQRLinks = (fraccionamientoId, numeroCasa = null) => {
   };
 };
 
+/**
+ * Calcula estadísticas de una lista de reportes
+ * @param {Array} reportes - Array de reportes
+ * @returns {Object} - Objeto con estadísticas
+ */
+const calcularEstadisticasReportes = (reportes) => {
+  const { REPORTE_STATUS } = require('../constants/reporte.constants');
+
+  return {
+    total: reportes.length,
+    aceptados: reportes.filter(r => r.estatus === REPORTE_STATUS.ACEPTADO).length,
+    rechazados: reportes.filter(r => r.estatus === REPORTE_STATUS.RECHAZADO).length,
+    expirados: reportes.filter(r => r.estatus === REPORTE_STATUS.EXPIRADO).length,
+    pendientes: reportes.filter(r => r.estatus === REPORTE_STATUS.PENDIENTE).length
+  };
+};
+
 module.exports = {
   validarCampos,
   manejarError,
   buscarFraccionamiento,
   buscarCasa,
-  generarQRLinks
+  generarQRLinks,
+  calcularEstadisticasReportes
 };

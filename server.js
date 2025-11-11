@@ -14,7 +14,7 @@ const residentesRoutes = require("./routes/residentes.routes");
 const visitasRoutes = require("./routes/visitas.routes");
 const reportesRoutes = require("./routes/reportes.routes");
 const notificationRoutes = require("./routes/notification.routes");
-const qrPuertaRoutes = require("./routes/qr-puerta");
+const qrPuertaRoutes = require("./routes/qr-puerta.routes");
 const analyticsRoutes = require("./routes/analytics.routes");
 
 const app = express();
@@ -102,6 +102,13 @@ app.use("/api/notifications", notificationRoutes);
 app.use("/api/qr-puerta", qrPuertaRoutes);
 app.use("/api/analytics", analyticsRoutes);
 
+app.get("/api/ping", (req, res) => {
+  res.status(200).json({
+    status: "ok",
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime()
+  });
+});
 
 const PORT = process.env.PORT || 5002;
 

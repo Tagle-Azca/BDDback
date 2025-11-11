@@ -1,8 +1,8 @@
 const express = require("express");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-const Admin = require("../models/admin");
-const FraccAdmin = require("../models/fraccionamientoAdmin");
+const Admin = require("../models/admin.model");
+const FraccAdmin = require("../models/admin-fraccionamiento.model");
 
 const router = express.Router();
 

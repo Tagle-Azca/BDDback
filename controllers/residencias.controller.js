@@ -1,5 +1,5 @@
 const Admin = require("../models/fraccUserModels");
-const Residencias = require("../models/Residencias");
+const Residencias = require("../models/residencia.model");
 const { v4: uuidv4 } = require("uuid");
 
 const registerHouse = async (fraccionamiento, casaDatos) => {

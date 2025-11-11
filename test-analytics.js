@@ -6,7 +6,7 @@ const BASE_URL = process.env.NODE_ENV === 'production'
   : 'http://localhost:5002';
 const ANALYTICS_URL = `${BASE_URL}/api/analytics`;
 
-console.log(`🌐 Usando servidor: ${BASE_URL}`);
+console.log(`Usando servidor: ${BASE_URL}`);
 
 const testData = {
   userId: '68d41e9ad9b7f5d456400283',
@@ -105,14 +105,14 @@ async function testHealthCheck() {
 }
 
 async function runAllTests() {
-  console.log('🚀 Iniciando pruebas del sistema de analytics...');
-  console.log(`📍 Servidor objetivo: ${BASE_URL}`);
+  console.log('Iniciando pruebas del sistema de analytics...');
+  console.log(`Servidor objetivo: ${BASE_URL}`);
 
   await testHealthCheck();
   await testSingleEvent();
   await testBatchEvents();
 
-  console.log('\n⏳ Esperando 2 segundos...');
+  console.log('\nEsperando 2 segundos...');
   await new Promise(resolve => setTimeout(resolve, 2000));
 
   await testGetStats();

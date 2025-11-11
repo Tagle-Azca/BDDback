@@ -1,4 +1,4 @@
-const Analytics = require('../models/Analytics');
+const Analytics = require('../models/analytics.model');
 
 const cleanupOldEvents = async (daysToKeep = 730) => {
   try {

@@ -1,9 +1,9 @@
 const express = require("express");
-const fetch = require("node-fetch");
-const PlayerRegistry = require("../models/playerRegistry");
+const PlayerRegistry = require("../models/player-registry.model");
 const { manejarError } = require('../utils/helpers');
 const { validarFraccionamiento, validarCasa } = require('../middleware/validators');
 const { sanitizeName } = require('../utils/stringUtils');
+const { enviarNotificacionExpulsion } = require('../services/notification.service');
 
 const router = express.Router();
 
@@ -30,13 +30,12 @@ router.post("/residencias/:fraccId/:numero/login", validarFraccionamiento, valid
     if (!residente) {
       return res.status(404).json({ error: "Residente no encontrado" });
     }
-    if (residente.activo) {
-      return res.status(400).json({ error: "Este residente ya está registrado" });
+
+    if (!residente.activo) {
+      return res.status(403).json({ error: "Residente inactivo. Contacta al administrador." });
     }
 
-    residente.activo = true;
-    await req.fraccionamiento.save();
-    res.status(200).json({ message: "Sesión registrada exitosamente", residente });
+    res.status(200).json({ message: "Login exitoso", residente });
   } catch (error) {
     manejarError(res, error);
   }
@@ -224,35 +223,5 @@ router.delete("/:fraccId/casas/:numero/residentes/:residenteId",
     }
   }
 );
-
-async function enviarNotificacionExpulsion(playerId, nombreResidente) {
-  try {
-    const payload = {
-      app_id: process.env.ONESIGNAL_APP_ID,
-      include_player_ids: [playerId],
-      data: {
-        type: 'force_logout',
-        action: 'logout_user',
-        message: 'Tu acceso ha sido revocado por el administrador',
-        timestamp: Date.now().toString()
-      },
-      content_available: true,
-      priority: 10
-    };
-
-    const response = await fetch("https://onesignal.com/api/v1/notifications", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Basic ${process.env.ONESIGNAL_API_KEY}`
-      },
-      body: JSON.stringify(payload),
-    });
-
-    const result = await response.json();
-
-  } catch (error) {
-  }
-}
 
 module.exports = router;

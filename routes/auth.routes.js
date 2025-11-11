@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { createUserToken, invalidateToken, validateUserStillExists } = require('../middleware/tokenAuth');
-const Fraccionamiento = require('../models/fraccionamiento');
+const Fraccionamiento = require('../models/fraccionamiento.model');
 
 router.post('/login', async (req, res) => {
   try {
@@ -110,7 +110,7 @@ router.get('/validate', async (req, res) => {
     }
 
     const token = authHeader.substring(7);
-    const UserToken = require('../models/userToken');
+    const UserToken = require('../models/user-token.model');
 
     const userToken = await UserToken.findOne({
       token,

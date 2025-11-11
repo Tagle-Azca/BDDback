@@ -1,5 +1,5 @@
-const UserToken = require('../models/userToken');
-const Fraccionamiento = require('../models/fraccionamiento');
+const UserToken = require('../models/user-token.model');
+const Fraccionamiento = require('../models/fraccionamiento.model');
 const crypto = require('crypto');
 
 function generateSecureToken() {

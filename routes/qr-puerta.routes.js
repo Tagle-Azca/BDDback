@@ -1,5 +1,5 @@
 const express = require("express");
-const Fraccionamiento = require("../models/fraccionamiento");
+const Fraccionamiento = require("../models/fraccionamiento.model");
 
 const router = express.Router();
 

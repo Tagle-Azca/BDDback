@@ -1,6 +1,6 @@
 const express = require("express");
 const bcrypt = require("bcrypt");
-const Fraccionamiento = require("../models/fraccionamiento");
+const Fraccionamiento = require("../models/fraccionamiento.model");
 const { validarCampos, manejarError, generarQRLinks } = require('../utils/helpers');
 const { validarFraccionamiento } = require('../middleware/validators');
 const { sanitizeGeneralText, sanitizeEmail } = require('../utils/stringUtils');
@@ -9,9 +9,8 @@ const router = express.Router();
 
 router.post("/", async (req, res) => {
   try {
-    const { nombre, usuario, contrasena, direccion, correo, telefono, periodoMeses } = req.body;
+    const { nombre, usuario, contrasena, direccion, correo, telefono, fechaExpiracion, periodoMeses } = req.body;
 
-    // Validaciones de longitud mínima (5 caracteres)
     const camposMinimos = { nombre, usuario, contrasena, direccion };
     for (const [campo, valor] of Object.entries(camposMinimos)) {
       if (!valor || valor.trim().length < 5) {
@@ -21,7 +20,6 @@ router.post("/", async (req, res) => {
       }
     }
 
-    // Validaciones de longitud máxima
     if (nombre.length > 30) return res.status(400).json({ error: "El nombre no puede exceder 30 caracteres" });
     if (usuario.length > 30) return res.status(400).json({ error: "El usuario no puede exceder 30 caracteres" });
     if (contrasena.length > 30) return res.status(400).json({ error: "La contraseña no puede exceder 30 caracteres" });
@@ -31,10 +29,16 @@ router.post("/", async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(contrasena, 10);
 
-    const mesesSuscripcion = periodoMeses || 12;
-    const fechaExpiracion = new Date();
-    fechaExpiracion.setMonth(fechaExpiracion.getMonth() + parseInt(mesesSuscripcion));
-    fechaExpiracion.setHours(23, 59, 59, 999);
+    let fechaExpiracionFinal;
+    if (fechaExpiracion) {
+      fechaExpiracionFinal = new Date(fechaExpiracion);
+      fechaExpiracionFinal.setHours(23, 59, 59, 999);
+    } else {
+      const mesesSuscripcion = periodoMeses || 12;
+      fechaExpiracionFinal = new Date();
+      fechaExpiracionFinal.setMonth(fechaExpiracionFinal.getMonth() + parseInt(mesesSuscripcion));
+      fechaExpiracionFinal.setHours(23, 59, 59, 999);
+    }
 
     const nuevoFraccionamiento = new Fraccionamiento({
       ...req.body,
@@ -42,7 +46,7 @@ router.post("/", async (req, res) => {
       direccion: sanitizeGeneralText(direccion),
       correo: correo ? sanitizeEmail(correo) : '',
       contrasena: hashedPassword,
-      fechaExpiracion: fechaExpiracion,
+      fechaExpiracion: fechaExpiracionFinal,
     });
 
     await nuevoFraccionamiento.save();
@@ -101,9 +105,8 @@ router.put("/:fraccId/toggle", validarFraccionamiento, async (req, res) => {
 
 router.put("/update/:fraccId", validarFraccionamiento, async (req, res) => {
   try {
-    const { nombre, usuario, contrasena, direccion, correo, telefono, extenderMeses } = req.body;
+    const { nombre, usuario, contrasena, direccion, correo, telefono, extenderMeses, fechaExpiracion } = req.body;
 
-    // Validar campos si se proporcionan
     if (nombre !== undefined) {
       if (nombre.trim().length < 5) {
         return res.status(400).json({ error: "El nombre debe tener al menos 5 caracteres" });
@@ -148,7 +151,6 @@ router.put("/update/:fraccId", validarFraccionamiento, async (req, res) => {
       req.fraccionamiento.telefono = telefono;
     }
 
-    // Si se proporciona contraseña, validar y hashearla
     if (contrasena !== undefined && contrasena.trim() !== "") {
       if (contrasena.trim().length < 5) {
         return res.status(400).json({ error: "La contraseña debe tener al menos 5 caracteres" });
@@ -160,7 +162,11 @@ router.put("/update/:fraccId", validarFraccionamiento, async (req, res) => {
       req.fraccionamiento.contrasena = hashedPassword;
     }
 
-    if (extenderMeses && parseInt(extenderMeses) > 0) {
+    if (fechaExpiracion) {
+      const nuevaFecha = new Date(fechaExpiracion);
+      nuevaFecha.setHours(23, 59, 59, 999);
+      req.fraccionamiento.fechaExpiracion = nuevaFecha;
+    } else if (extenderMeses && parseInt(extenderMeses) > 0) {
       const fechaActual = req.fraccionamiento.fechaExpiracion || new Date();
       const nuevaFecha = new Date(fechaActual);
       nuevaFecha.setMonth(nuevaFecha.getMonth() + parseInt(extenderMeses));

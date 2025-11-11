@@ -1,5 +1,5 @@
-const Reporte = require('../models/Reportes');
-const sendNotification = require('./notification.contoller'); 
+const Reporte = require('../models/reporte.model');
+const sendNotification = require('./notifications.controller'); 
 
 const crearReporte = async (req, res) => {
   try {
