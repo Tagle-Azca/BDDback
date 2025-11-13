@@ -19,7 +19,9 @@ router.post("/:fraccId/casas/:numero/residentes", validarFraccionamiento, valida
 });
 
 router.get("/residencias/:fraccId/:numero", validarFraccionamiento, validarCasa, (req, res) => {
-  res.status(200).json({ residentes: req.casa.residentes });
+  // Solo mostrar residentes inactivos (que no han hecho login)
+  const residentesInactivos = req.casa.residentes.filter(r => !r.activo);
+  res.status(200).json({ residentes: residentesInactivos });
 });
 
 router.post("/residencias/:fraccId/:numero/login", validarFraccionamiento, validarCasa, async (req, res) => {
@@ -31,8 +33,10 @@ router.post("/residencias/:fraccId/:numero/login", validarFraccionamiento, valid
       return res.status(404).json({ error: "Residente no encontrado" });
     }
 
+    // Auto-activar residente en el primer login
     if (!residente.activo) {
-      return res.status(403).json({ error: "Residente inactivo. Contacta al administrador." });
+      residente.activo = true;
+      await req.fraccionamiento.save();
     }
 
     res.status(200).json({ message: "Login exitoso", residente });
