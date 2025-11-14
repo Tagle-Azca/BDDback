@@ -65,7 +65,7 @@ router.post("/:fraccId/crear", validarFraccionamiento, async (req, res) => {
 router.get("/:fraccId", async (req, res) => {
   try {
     const { fraccId } = req.params;
-    const { casa, desde, hasta, limite = 50, incluirExpiradas = 'false' } = req.query;
+    const { casa, desde, hasta, limite = 50, pagina = 1, ordenar = 'desc', incluirExpiradas = 'false' } = req.query;
 
     const filtro = { fraccId: fraccId };
 
@@ -77,9 +77,17 @@ router.get("/:fraccId", async (req, res) => {
     if (desde) filtro.tiempo = { $gte: new Date(desde) };
     if (hasta) filtro.tiempo = { ...filtro.tiempo, $lte: new Date(hasta) };
 
+    const limiteNum = parseInt(limite);
+    const paginaNum = parseInt(pagina);
+    const skip = (paginaNum - 1) * limiteNum;
+    const sortOrder = ordenar === 'asc' ? 1 : -1;
+
+    const total = await Reporte.countDocuments(filtro);
+
     const reportes = await Reporte.find(filtro)
-      .sort({ tiempo: -1 })
-      .limit(parseInt(limite));
+      .sort({ tiempo: sortOrder })
+      .skip(skip)
+      .limit(limiteNum);
 
     const estadisticas = calcularEstadisticasReportes(reportes);
 
@@ -87,7 +95,10 @@ router.get("/:fraccId", async (req, res) => {
       success: true,
       fraccionamiento: fraccId,
       reportes: reportes,
-      estadisticas: estadisticas
+      estadisticas: estadisticas,
+      total: total,
+      pagina: paginaNum,
+      totalPaginas: Math.ceil(total / limiteNum)
     });
 
   } catch (error) {
@@ -98,7 +109,7 @@ router.get("/:fraccId", async (req, res) => {
 router.get("/:fraccId/casa/:numeroCasa", async (req, res) => {
   try {
     const { fraccId, numeroCasa } = req.params;
-    const { limite = 50, desde, incluirExpiradas = 'false' } = req.query;
+    const { limite = 50, pagina = 1, desde, hasta, ordenar = 'desc', incluirExpiradas = 'false' } = req.query;
 
     const filtro = {
       fraccId: fraccId,
@@ -111,10 +122,21 @@ router.get("/:fraccId/casa/:numeroCasa", async (req, res) => {
     if (desde) {
       filtro.tiempo = { $gte: new Date(desde) };
     }
+    if (hasta) {
+      filtro.tiempo = { ...filtro.tiempo, $lte: new Date(hasta) };
+    }
+
+    const limiteNum = parseInt(limite);
+    const paginaNum = parseInt(pagina);
+    const skip = (paginaNum - 1) * limiteNum;
+    const sortOrder = ordenar === 'asc' ? 1 : -1;
+
+    const total = await Reporte.countDocuments(filtro);
 
     const reportes = await Reporte.find(filtro)
-      .sort({ tiempo: -1 })
-      .limit(parseInt(limite));
+      .sort({ tiempo: sortOrder })
+      .skip(skip)
+      .limit(limiteNum);
 
     const estadisticas = calcularEstadisticasReportes(reportes);
 
@@ -123,7 +145,10 @@ router.get("/:fraccId/casa/:numeroCasa", async (req, res) => {
       casa: numeroCasa,
       fraccionamiento: fraccId,
       reportes: reportes,
-      estadisticas: estadisticas
+      estadisticas: estadisticas,
+      total: total,
+      pagina: paginaNum,
+      totalPaginas: Math.ceil(total / limiteNum)
     });
 
   } catch (error) {

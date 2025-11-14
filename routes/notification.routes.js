@@ -181,7 +181,6 @@ router.get("/pending/:fraccId/:residencia", async (req, res) => {
     const notificationSecret = process.env.NOTIFICATION_SECRET || 'default-secret-change-in-production';
 
     const notificaciones = reportesPendientes.map(reporte => {
-      // Recalcular el security hash para cada notificación
       const securityHash = crypto
         .createHmac('sha256', notificationSecret)
         .update(`${fraccId}_${residencia}_${reporte.notificationId}`)
@@ -199,10 +198,10 @@ router.get("/pending/:fraccId/:residencia", async (req, res) => {
         residencia: reporte.numeroCasa,
         tipo: 'solicitud_acceso',
         fecha: reporte.tiempo,
-        estatus: reporte.estatus, // Incluir el estatus
-        autorizadoPor: reporte.autorizadoPor, // Incluir quién autorizó
-        autorizadoPorId: reporte.autorizadoPorId, // Incluir el ID de quien autorizó
-        securityHash: securityHash, // Agregar hash de seguridad
+        estatus: reporte.estatus, 
+        autorizadoPor: reporte.autorizadoPor, 
+        autorizadoPorId: reporte.autorizadoPorId, 
+        securityHash: securityHash, 
       };
     });
 
