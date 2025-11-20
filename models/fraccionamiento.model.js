@@ -24,6 +24,7 @@ const fraccionamientoSchema = new mongoose.Schema({
   telefono: { type: String, required: true },
   estado: { type: String, default: "activo" },
   puerta: {type: Boolean, default: false},
+  primerLogin: { type: Boolean, default: true },
   fechaExpedicion: { type: Date, default: Date.now },
   qrVisitas: {
     type: String,

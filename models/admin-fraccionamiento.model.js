@@ -13,6 +13,7 @@ const fraccionamientoAdminSchema = new mongoose.Schema({
     required: true,
   },
   rol: { type: String, default: "admin" },
+  primerLogin: { type: Boolean, default: true },
 });
 
 fraccionamientoAdminSchema.pre("save", async function (next) {

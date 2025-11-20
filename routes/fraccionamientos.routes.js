@@ -191,7 +191,18 @@ router.post("/login", async (req, res) => {
   if (!validarCampos({ usuario, contrasena }, res)) return;
 
   try {
-    const user = await Fraccionamiento.findOne({ usuario });
+    // Primero intentar buscar en Admin (super admin)
+    const Admin = require("../models/admin.model");
+    let user = await Admin.findOne({ usuario });
+    let isSuperAdmin = false;
+
+    // Si no se encuentra en Admin, buscar en Fraccionamientos
+    if (!user) {
+      user = await Fraccionamiento.findOne({ usuario });
+    } else {
+      isSuperAdmin = true;
+    }
+
     if (!user) {
       return res.status(404).json({ error: "Usuario no encontrado" });
     }
@@ -201,13 +212,120 @@ router.post("/login", async (req, res) => {
       return res.status(401).json({ error: "Contraseña incorrecta" });
     }
 
+    // Verificar si es primer login SOLO para fraccionamientos
+    if (!isSuperAdmin && user.primerLogin) {
+      return res.status(200).json({
+        requiresPasswordChange: true,
+        tempToken: "temp_" + user._id,
+        userId: user._id,
+        isSuperAdmin: false,
+        mensaje: "Debe cambiar su contraseña antes de continuar",
+      });
+    }
+
+    // Preparar respuesta según el tipo de usuario
+    const userResponse = isSuperAdmin
+      ? {
+          _id: user._id,
+          usuario: user.usuario,
+          rol: user.rol,
+          isSuperAdmin: true,
+        }
+      : user;
+
     res.status(200).json({
       mensaje: "Login exitoso",
       token: "token_simulado",
-      user,
+      user: userResponse,
     });
   } catch (error) {
     manejarError(res, error, "Error del servidor al iniciar sesión");
+  }
+});
+
+router.post("/change-first-password", async (req, res) => {
+  try {
+    const { tempToken, newPassword, userId, isSuperAdmin } = req.body;
+
+    if (!tempToken || !newPassword || !userId) {
+      return res.status(400).json({
+        error: "Token temporal, nueva contraseña y ID de usuario son requeridos",
+      });
+    }
+
+    // Validar que el tempToken sea válido
+    if (!tempToken.startsWith("temp_") || tempToken !== "temp_" + userId) {
+      return res.status(401).json({
+        error: "Token temporal inválido",
+      });
+    }
+
+    // Buscar el usuario según el tipo
+    const Admin = require("../models/admin.model");
+    let user;
+
+    if (isSuperAdmin) {
+      user = await Admin.findById(userId);
+    } else {
+      user = await Fraccionamiento.findById(userId);
+    }
+
+    if (!user) {
+      return res.status(404).json({ error: "Usuario no encontrado" });
+    }
+
+    // Validar que el usuario requiera cambio de contraseña
+    if (!user.primerLogin) {
+      return res.status(403).json({
+        error: "Este usuario ya ha cambiado su contraseña inicial",
+      });
+    }
+
+    // Verificar que la nueva contraseña sea diferente a la actual
+    const isSamePassword = await bcrypt.compare(newPassword, user.contrasena);
+    if (isSamePassword) {
+      return res.status(400).json({
+        error: "La nueva contraseña debe ser diferente a la actual",
+      });
+    }
+
+    // Validar requisitos de contraseña
+    if (newPassword.trim().length < 5) {
+      return res.status(400).json({
+        error: "La contraseña debe tener al menos 5 caracteres",
+      });
+    }
+
+    if (newPassword.length > 30) {
+      return res.status(400).json({
+        error: "La contraseña no puede exceder 30 caracteres",
+      });
+    }
+
+    // Actualizar contraseña y marcar que ya no es primer login
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    user.contrasena = hashedPassword;
+    user.primerLogin = false;
+    await user.save();
+
+    // Preparar respuesta según el tipo de usuario
+    const userResponse = isSuperAdmin
+      ? {
+          _id: user._id,
+          usuario: user.usuario,
+          rol: user.rol,
+          isSuperAdmin: true,
+        }
+      : user;
+
+    // Retornar la misma estructura que el login normal
+    res.status(200).json({
+      mensaje: "Contraseña cambiada exitosamente",
+      token: "token_simulado",
+      user: userResponse,
+    });
+  } catch (error) {
+    manejarError(res, error, "Error al cambiar la contraseña");
   }
 });
 
