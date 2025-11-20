@@ -1,33 +1,44 @@
 const fetch = require("node-fetch");
 const Fraccionamiento = require("../models/fraccionamiento.model");
 
-/**
- * Envía una notificación silenciosa para retirar un banner de notificación
- * @param {string} fraccId - ID del fraccionamiento
- * @param {string} numeroCasa - Número de la casa
- * @param {string} notificationId - ID de la notificación
- * @param {string} estatus - Estatus de la respuesta (aceptado/rechazado)
- * @param {string} residenteNombre - Nombre del residente que respondió
- */
+const ONESIGNAL_API_URL = "https://onesignal.com/api/v1/notifications";
+
+const getOneSignalHeaders = () => ({
+  "Content-Type": "application/json",
+  "Authorization": `Basic ${process.env.ONESIGNAL_API_KEY}`
+});
+
+const sendOneSignalNotification = async (payload) => {
+  try {
+    const response = await fetch(ONESIGNAL_API_URL, {
+      method: "POST",
+      headers: getOneSignalHeaders(),
+      body: JSON.stringify(payload)
+    });
+    return await response.json();
+  } catch (error) {
+    console.error('Error enviando notificación a OneSignal:', error);
+    throw error;
+  }
+};
+
+const getActiveResidentsPlayerIds = async (fraccId, numeroCasa) => {
+  const fraccionamiento = await Fraccionamiento.findById(fraccId);
+  if (!fraccionamiento) return [];
+
+  const casa = fraccionamiento.residencias.find(r => r.numero.toString() === numeroCasa.toString());
+  if (!casa) return [];
+
+  const residentesActivos = casa.residentes.filter(r => r.activo && r.playerId);
+  return [...new Set(residentesActivos
+    .map(r => r.playerId)
+    .filter(id => id && id.trim() !== ''))];
+};
+
 async function enviarNotificacionRetiroBanner(fraccId, numeroCasa, notificationId, estatus, residenteNombre) {
   try {
-    const fraccionamiento = await Fraccionamiento.findById(fraccId);
-
-    if (!fraccionamiento) return;
-
-    const casa = fraccionamiento.residencias.find(r => r.numero.toString() === numeroCasa.toString());
-    if (!casa) return;
-
-    const residentesActivos = casa.residentes.filter(r => r.activo && r.playerId);
-    if (residentesActivos.length === 0) return;
-
-    const playerIds = [...new Set(residentesActivos
-      .map(residente => residente.playerId)
-      .filter(id => id && id.trim() !== ''))];
-
-    if (playerIds.length === 0) {
-      return;
-    }
+    const playerIds = await getActiveResidentsPlayerIds(fraccId, numeroCasa);
+    if (playerIds.length === 0) return null;
 
     const payload = {
       app_id: process.env.ONESIGNAL_APP_ID,
@@ -52,29 +63,13 @@ async function enviarNotificacionRetiroBanner(fraccId, numeroCasa, notificationI
       mutable_content: true
     };
 
-    const response = await fetch("https://onesignal.com/api/v1/notifications", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Basic ${process.env.ONESIGNAL_API_KEY}`
-      },
-      body: JSON.stringify(payload),
-    });
-
-    const result = await response.json();
-    return result;
-
+    return await sendOneSignalNotification(payload);
   } catch (error) {
     console.error('Error enviando notificación de retiro de banner:', error);
     return null;
   }
 }
 
-/**
- * Envía una notificación de expulsión a un residente
- * @param {string} playerId - Player ID del residente
- * @param {string} nombreResidente - Nombre del residente
- */
 async function enviarNotificacionExpulsion(playerId, nombreResidente) {
   try {
     const payload = {
@@ -90,18 +85,7 @@ async function enviarNotificacionExpulsion(playerId, nombreResidente) {
       priority: 10
     };
 
-    const response = await fetch("https://onesignal.com/api/v1/notifications", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Basic ${process.env.ONESIGNAL_API_KEY}`
-      },
-      body: JSON.stringify(payload),
-    });
-
-    const result = await response.json();
-    return result;
-
+    return await sendOneSignalNotification(payload);
   } catch (error) {
     console.error('Error enviando notificación de expulsión:', error);
     return null;
@@ -110,5 +94,7 @@ async function enviarNotificacionExpulsion(playerId, nombreResidente) {
 
 module.exports = {
   enviarNotificacionRetiroBanner,
-  enviarNotificacionExpulsion
+  enviarNotificacionExpulsion,
+  sendOneSignalNotification,
+  getActiveResidentsPlayerIds
 };

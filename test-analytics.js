@@ -1,133 +1,17 @@
+const AnalyticsTestSuite = require('./tests/integration/analytics.test');
 
-const axios = require('axios');
+console.log('DEPRECADO: Este archivo será eliminado en futuras versiones.');
+console.log('   Por favor usa: node tests/integration/analytics.test.js');
+console.log('   O mejor aún: node tests/run-all.js\n');
+console.log('IMPORTANTE: Asegúrate de que el servidor esté corriendo (npm start)\n');
 
-const BASE_URL = process.env.NODE_ENV === 'production'
-  ? 'https://ingresosbackend.onrender.com'
-  : 'http://localhost:5002';
-const ANALYTICS_URL = `${BASE_URL}/api/analytics`;
-
-console.log(`Usando servidor: ${BASE_URL}`);
-
-const testData = {
-  userId: '68d41e9ad9b7f5d456400283',
-  fraccId: '685417c35764cd581a84a2c9',
-  house: '104'
-};
-
-async function testSingleEvent() {
-  try {
-    console.log('\nProbando evento individual...');
-
-    const response = await axios.post(`${ANALYTICS_URL}/track`, {
-      event: 'app_open',
-      properties: {
-        user_id: testData.userId,
-        fracc_id: testData.fraccId,
-        house: testData.house,
-        app_version: '1.6.6+11',
-        platform: 'ios',
-        device_timestamp: new Date().toISOString()
-      }
-    });
-
-    console.log('Evento enviado:', response.data);
-  } catch (error) {
-    console.error('Error enviando evento:', error.response?.data || error.message);
-  }
-}
-
-async function testBatchEvents() {
-  try {
-    console.log('\nProbando batch de eventos...');
-
-    const events = [
-      {
-        event: 'screen_view',
-        properties: {
-          user_id: testData.userId,
-          fracc_id: testData.fraccId,
-          house: testData.house,
-          screen_name: 'home_page',
-          platform: 'ios'
-        }
-      },
-      {
-        event: 'qr_scan',
-        properties: {
-          user_id: testData.userId,
-          fracc_id: testData.fraccId,
-          house: testData.house,
-          success: true,
-          result_type: 'access_qr',
-          platform: 'ios'
-        }
-      },
-      {
-        event: 'door_access',
-        properties: {
-          user_id: testData.userId,
-          fracc_id: testData.fraccId,
-          house: testData.house,
-          authorized: true,
-          method: 'qr',
-          platform: 'ios'
-        }
-      }
-    ];
-
-    const response = await axios.post(`${ANALYTICS_URL}/batch`, { events });
-    console.log('Batch enviado:', response.data);
-  } catch (error) {
-    console.error('Error enviando batch:', error.response?.data || error.message);
-  }
-}
-
-async function testGetStats() {
-  try {
-    console.log('\nProbando obtención de estadísticas...');
-
-    const response = await axios.get(`${ANALYTICS_URL}/stats/${testData.userId}?days=7`);
-    console.log('Estadísticas obtenidas:', JSON.stringify(response.data, null, 2));
-  } catch (error) {
-    console.error('Error obteniendo estadísticas:', error.response?.data || error.message);
-  }
-}
-
-async function testHealthCheck() {
-  try {
-    console.log('\nProbando health check...');
-
-    const response = await axios.get(`${ANALYTICS_URL}/health`);
-    console.log('Health check:', response.data);
-  } catch (error) {
-    console.error('Error en health check:', error.response?.data || error.message);
-  }
-}
-
-async function runAllTests() {
-  console.log('Iniciando pruebas del sistema de analytics...');
-  console.log(`Servidor objetivo: ${BASE_URL}`);
-
-  await testHealthCheck();
-  await testSingleEvent();
-  await testBatchEvents();
-
-  console.log('\nEsperando 2 segundos...');
-  await new Promise(resolve => setTimeout(resolve, 2000));
-
-  await testGetStats();
-
-  console.log('\nPruebas completadas!');
+async function runLegacyTests() {
+  const suite = new AnalyticsTestSuite();
+  await suite.runAll();
 }
 
 if (require.main === module) {
-  runAllTests().catch(console.error);
+  runLegacyTests().catch(console.error);
 }
 
-module.exports = {
-  testSingleEvent,
-  testBatchEvents,
-  testGetStats,
-  testHealthCheck,
-  runAllTests
-};
+module.exports = runLegacyTests;

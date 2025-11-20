@@ -4,7 +4,8 @@ const {
   trackEvent,
   trackBatch,
   getUserStats,
-  getFraccionamientoStats
+  getFraccionamientoStats,
+  healthCheck
 } = require('../controllers/analytics.controller');
 
 const logRequest = (req, res, next) => {
@@ -14,18 +15,10 @@ const logRequest = (req, res, next) => {
 
 router.use(logRequest);
 
+router.get('/health', healthCheck);
 router.post('/track', trackEvent);
 router.post('/batch', trackBatch);
-
 router.get('/stats/:userId', getUserStats);
 router.get('/fraccionamiento/:fraccId/stats', getFraccionamientoStats);
-
-router.get('/health', (req, res) => {
-  res.json({
-    success: true,
-    message: 'Analytics service is running',
-    timestamp: new Date().toISOString()
-  });
-});
 
 module.exports = router;

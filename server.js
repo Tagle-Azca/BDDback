@@ -14,6 +14,7 @@ const residentesRoutes = require("./routes/residentes.routes");
 const visitasRoutes = require("./routes/visitas.routes");
 const reportesRoutes = require("./routes/reportes.routes");
 const notificationRoutes = require("./routes/notification.routes");
+const playerRegistryRoutes = require("./routes/player-registry.routes");
 const qrPuertaRoutes = require("./routes/qr-puerta.routes");
 const analyticsRoutes = require("./routes/analytics.routes");
 
@@ -99,6 +100,7 @@ app.use("/api/fraccionamientos", visitasRoutes);
 app.use("/api/residencias", residenciasRoutes);
 app.use("/api/reportes", reportesRoutes);
 app.use("/api/notifications", notificationRoutes);
+app.use("/api/devices", playerRegistryRoutes);
 app.use("/api/qr-puerta", qrPuertaRoutes);
 app.use("/api/analytics", analyticsRoutes);
 
@@ -110,7 +112,19 @@ app.get("/api/ping", (req, res) => {
   });
 });
 
+app.get("/health", (req, res) => {
+  res.status(200).json({
+    status: "healthy",
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    memory: process.memoryUsage()
+  });
+});
+
+const keepAliveService = require('./services/keep-alive.service');
+
 const PORT = process.env.PORT || 5002;
 
 server.listen(PORT, "0.0.0.0", () => {
+  keepAliveService.start();
 });

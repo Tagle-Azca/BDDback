@@ -91,7 +91,7 @@ router.post('/:fraccId/abrir-puerta', async (req, res) => {
       );
     }, 10000);
 
-    res.json({ success: true, message: "Portón abierto correctamente" });
+    res.json({ success: true, message: "Portón abriendo con exito" });
 
   } catch (error) {
     res.json({ success: false, errorMessage: "Error interno del servidor" });
