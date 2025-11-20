@@ -108,7 +108,8 @@ app.get("/api/ping", (req, res) => {
   res.status(200).json({
     status: "ok",
     timestamp: new Date().toISOString(),
-    uptime: process.uptime()
+    uptime: process.uptime(),
+    version: "1.0.1"
   });
 });
 
