@@ -114,14 +114,13 @@ router.get('/validate', async (req, res) => {
 
     const userToken = await UserToken.findOne({
       token,
-      isActive: true,
-      expiresAt: { $gt: new Date() }
+      isActive: true
     });
 
     if (!userToken) {
       return res.status(401).json({
         valid: false,
-        error: 'Token inválido o expirado',
+        error: 'Token inválido',
         shouldRelogin: true
       });
     }

@@ -16,41 +16,35 @@ async function validateToken(req, res, next) {
     const token = authHeader.substring(7);
     const userToken = await UserToken.findOne({
       token,
-      isActive: true,
-      expiresAt: { $gt: new Date() }
+      isActive: true
     });
 
     if (!userToken) {
       return res.status(401).json({
-        error: 'Token inválido o expirado',
+        error: 'Token inválido',
         shouldRelogin: true
       });
     }
 
-    const threeDaysBeforeExpiry = new Date(userToken.expiresAt.getTime() - (3 * 24 * 60 * 60 * 1000));
-    const needsValidation = new Date() > threeDaysBeforeExpiry;
-
-    if (needsValidation) {
-      const isStillValid = await validateUserStillExists(userToken);
-      if (!isStillValid) {
-        await UserToken.updateOne(
-          { _id: userToken._id },
-          { isActive: false }
-        );
-        return res.status(401).json({
-          error: 'Usuario eliminado por administrador',
-          shouldRelogin: true
-        });
-      }
-
+    const isStillValid = await validateUserStillExists(userToken);
+    if (!isStillValid) {
       await UserToken.updateOne(
         { _id: userToken._id },
-        {
-          expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-          lastValidated: new Date()
-        }
+        { isActive: false }
       );
+      return res.status(401).json({
+        error: 'Usuario eliminado por administrador',
+        shouldRelogin: true
+      });
     }
+
+    await UserToken.updateOne(
+      { _id: userToken._id },
+      {
+        expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+        lastValidated: new Date()
+      }
+    );
 
     req.user = {
       userId: userToken.userId,

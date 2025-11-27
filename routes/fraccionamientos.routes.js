@@ -27,6 +27,16 @@ router.post("/", async (req, res) => {
     if (correo && correo.length > 64) return res.status(400).json({ error: "El correo no puede exceder 64 caracteres" });
     if (telefono && telefono.length > 15) return res.status(400).json({ error: "El teléfono no puede exceder 15 caracteres" });
 
+    const nombreExistente = await Fraccionamiento.findOne({ nombre: sanitizeGeneralText(nombre) });
+    if (nombreExistente) {
+      return res.status(400).json({ error: "Ya existe un fraccionamiento con ese nombre" });
+    }
+
+    const usuarioExistente = await Fraccionamiento.findOne({ usuario });
+    if (usuarioExistente) {
+      return res.status(400).json({ error: "Ya existe un fraccionamiento con ese usuario" });
+    }
+
     const hashedPassword = await bcrypt.hash(contrasena, 10);
 
     let fechaExpiracionFinal;
@@ -66,6 +76,12 @@ router.post("/", async (req, res) => {
       },
     });
   } catch (error) {
+    if (error.code === 11000) {
+      const campo = Object.keys(error.keyPattern)[0];
+      return res.status(400).json({
+        error: `Ya existe un fraccionamiento con ese ${campo === 'nombre' ? 'nombre' : campo}`
+      });
+    }
     manejarError(res, error, "Error al crear fraccionamiento");
   }
 });
