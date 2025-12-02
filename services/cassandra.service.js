@@ -2,6 +2,14 @@ const cassandra = require('cassandra-driver');
 const cassandraConfig = require('../config/cassandra');
 const { TimeUuid } = cassandra.types;
 
+// Helper para convertir MongoDB ObjectId a UUID
+function mongoIdToUuid(mongoId) {
+  const id = mongoId.toString();
+  // Pad to 32 characters and format as UUID
+  const padded = id.padEnd(32, '0');
+  return `${padded.slice(0, 8)}-${padded.slice(8, 12)}-${padded.slice(12, 16)}-${padded.slice(16, 20)}-${padded.slice(20, 32)}`;
+}
+
 class CassandraService {
   constructor() {
     this.client = null;
@@ -14,6 +22,10 @@ class CassandraService {
 
   isReady() {
     return cassandraConfig.isReady();
+  }
+
+  getClient() {
+    return cassandraConfig.getClient();
   }
 
   // ==================== REPORTES ====================
@@ -33,8 +45,8 @@ class CassandraService {
       const date = new Date(reporte.tiempo).toISOString().split('T')[0];
 
       const params = [
-        cassandra.types.Uuid.fromString(reporte._id.toString()),
-        cassandra.types.Uuid.fromString(reporte.fraccId.toString()),
+        cassandra.types.Uuid.fromString(mongoIdToUuid(reporte._id)),
+        cassandra.types.Uuid.fromString(mongoIdToUuid(reporte.fraccId)),
         date,
         reporte.tiempo,
         reporte.numeroCasa,
@@ -75,10 +87,11 @@ class CassandraService {
         SELECT * FROM reportes_history
         WHERE fracc_id = ? AND date >= ? AND date <= ?
         LIMIT ?
+        ALLOW FILTERING
       `;
 
       const params = [
-        cassandra.types.Uuid.fromString(fraccId),
+        cassandra.types.Uuid.fromString(mongoIdToUuid(fraccId)),
         startDate,
         endDate,
         limit
@@ -117,7 +130,7 @@ class CassandraService {
       `;
 
       const params = [
-        cassandra.types.Uuid.fromString(fraccId),
+        cassandra.types.Uuid.fromString(mongoIdToUuid(fraccId)),
         startDate,
         endDate,
         numeroCasa,
@@ -156,7 +169,7 @@ class CassandraService {
       const date = new Date().toISOString().split('T')[0];
 
       const params = [
-        cassandra.types.Uuid.fromString(data.fraccId),
+        cassandra.types.Uuid.fromString(mongoIdToUuid(data.fraccId)),
         date,
         new Date(),
         data.residencia || '',
@@ -187,7 +200,7 @@ class CassandraService {
       `;
 
       const params = [
-        cassandra.types.Uuid.fromString(fraccId),
+        cassandra.types.Uuid.fromString(mongoIdToUuid(fraccId)),
         startDate,
         endDate,
         limit
@@ -225,7 +238,7 @@ class CassandraService {
       `;
 
       const params = [
-        cassandra.types.Uuid.fromString(fraccId),
+        cassandra.types.Uuid.fromString(mongoIdToUuid(fraccId)),
         startDate,
         endDate,
         residencia
@@ -343,7 +356,7 @@ class CassandraService {
       const date = new Date().toISOString().split('T')[0];
 
       const params = [
-        cassandra.types.Uuid.fromString(data.fraccId),
+        cassandra.types.Uuid.fromString(mongoIdToUuid(data.fraccId)),
         date,
         new Date(),
         data.residencia || '',
@@ -380,7 +393,7 @@ class CassandraService {
       `;
 
       const params = [
-        cassandra.types.Uuid.fromString(fraccId),
+        cassandra.types.Uuid.fromString(mongoIdToUuid(fraccId)),
         startDate,
         endDate,
         residencia,

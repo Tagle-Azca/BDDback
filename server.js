@@ -135,5 +135,15 @@ const keepAliveService = require('./services/keep-alive.service');
 const PORT = process.env.PORT || 5002;
 
 server.listen(PORT, "0.0.0.0", () => {
+  console.log(`\n========================================`);
+  console.log(`SERVIDOR BACKEND CORRIENDO`);
+  console.log(`========================================`);
+  console.log(`Puerto: ${PORT}`);
+  console.log(`URL: http://localhost:${PORT}`);
+  console.log(`Bases de datos:`);
+  console.log(`  - MongoDB: Conectado`);
+  console.log(`  - Cassandra: Puerto 9042`);
+  console.log(`  - ChromaDB: Puerto 8000`);
+  console.log(`========================================\n`);
   keepAliveService.start();
 });
