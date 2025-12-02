@@ -23,8 +23,45 @@ async function conectar() {
 }
 
 async function simularVisitante() {
-  const { execSync } = require('child_process');
-  execSync('node simular-visitante.js', { stdio: 'inherit' });
+  await conectar();
+
+  const readline = require('readline');
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout
+  });
+
+  function pregunta(texto) {
+    return new Promise((resolve) => {
+      rl.question(texto, resolve);
+    });
+  }
+
+  console.log('\nSIMULADOR DE VISITANTE\n');
+
+  const nombre = await pregunta('Nombre del visitante: ');
+  const numeroCasa = await pregunta('Numero de casa a visitar: ');
+  const motivo = await pregunta('Motivo de la visita: ');
+
+  const Reporte = require('./models/reporte.model');
+
+  const reporte = new Reporte({
+    nombre,
+    numeroCasa: parseInt(numeroCasa),
+    motivo,
+    estatus: 'pendiente',
+    tiempo: new Date()
+  });
+
+  await reporte.save();
+
+  console.log(`\nVisitante registrado: ${nombre}`);
+  console.log(`Destino: Casa ${numeroCasa}`);
+  console.log(`Motivo: ${motivo}`);
+  console.log(`Estatus: Pendiente de aprobacion\n`);
+
+  rl.close();
+  await mongoose.disconnect();
 }
 
 async function listarReportes() {
@@ -113,8 +150,44 @@ async function verEstadisticas() {
 }
 
 async function probarSistema() {
-  const { execSync } = require('child_process');
-  execSync('node test-3-databases.js', { stdio: 'inherit' });
+  console.log('\nProbando conexion a las 3 bases de datos...\n');
+
+  // MongoDB
+  try {
+    await mongoose.connect(process.env.MONGO_URI);
+    console.log('MongoDB:     OK');
+    await mongoose.disconnect();
+  } catch (error) {
+    console.log('MongoDB:     ERROR -', error.message);
+  }
+
+  // Cassandra
+  try {
+    const cassandraService = require('./services/cassandra.service');
+    await cassandraService.init();
+    if (cassandraService.isReady()) {
+      console.log('Cassandra:   OK');
+    } else {
+      console.log('Cassandra:   ERROR - No se pudo conectar');
+    }
+  } catch (error) {
+    console.log('Cassandra:   ERROR -', error.message);
+  }
+
+  // ChromaDB
+  try {
+    const visitanteSearchService = require('./services/visitante-search.service');
+    await visitanteSearchService.init();
+    if (visitanteSearchService.isReady()) {
+      console.log('ChromaDB:    OK');
+    } else {
+      console.log('ChromaDB:    ERROR - No se pudo conectar');
+    }
+  } catch (error) {
+    console.log('ChromaDB:    ERROR -', error.message);
+  }
+
+  console.log('');
 }
 
 async function mostrarAyuda() {

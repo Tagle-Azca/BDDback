@@ -18,8 +18,22 @@ fi
 echo "Docker está corriendo"
 echo ""
 
-# Ir a la carpeta del backend
-cd IngresosBackend
+# Verificar si node_modules existe
+if [ ! -d "node_modules" ]; then
+    echo "ADVERTENCIA: No se encontró node_modules"
+    echo "Por favor ejecuta primero: npm install"
+    echo ""
+    read -p "Deseas instalar dependencias ahora? (s/n): " -n 1 -r
+    echo ""
+    if [[ $REPLY =~ ^[Ss]$ ]]; then
+        echo "Instalando dependencias..."
+        npm install
+    else
+        exit 1
+    fi
+fi
+
+echo ""
 
 # Verificar si existen los contenedores
 CASSANDRA_EXISTS=$(docker ps -a -q -f name=cassandra-eskayser)
