@@ -5,6 +5,7 @@ const { validarFraccionamiento, validarUsuarioEnFraccionamiento } = require('../
 const { procesarReporte } = require('../services/reporte.service');
 const { manejarError, calcularEstadisticasReportes } = require('../utils/helpers');
 const { ESTADOS_VALIDOS, esEstatusValido, REPORTE_STATUS } = require('../constants/reporte.constants');
+const { responderReporte, obtenerHistorialCasa, obtenerHistorialCassandra } = require('../controllers/reportes.controller');
 
 router.post("/:fraccId/crear", validarFraccionamiento, async (req, res) => {
   try {
@@ -211,5 +212,12 @@ router.put("/reporte/:reporteId", async (req, res) => {
     manejarError(res, error, "Error al actualizar reporte");
   }
 });
+
+router.put("/responder/:reporteId", responderReporte);
+
+router.get("/historial/:fraccId/:numeroCasa", obtenerHistorialCasa);
+
+// Nuevo endpoint para obtener historial desde Cassandra
+router.get("/historial-cassandra/:fraccId", obtenerHistorialCassandra);
 
 module.exports = router;

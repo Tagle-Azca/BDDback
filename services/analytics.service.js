@@ -43,10 +43,6 @@ const createAnalyticsEvent = (event, parsedProps) => {
 const saveEvent = async (event, properties, req) => {
   const parsedProps = parseEventProperties(properties, req);
 
-  if (!parsedProps.userId || !parsedProps.fraccId) {
-    throw new Error('user_id and fracc_id are required in properties');
-  }
-
   const analyticsEvent = createAnalyticsEvent(event, parsedProps);
   await analyticsEvent.save();
 

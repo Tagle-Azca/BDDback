@@ -17,6 +17,7 @@ const notificationRoutes = require("./routes/notification.routes");
 const playerRegistryRoutes = require("./routes/player-registry.routes");
 const qrPuertaRoutes = require("./routes/qr-puerta.routes");
 const analyticsRoutes = require("./routes/analytics.routes");
+const searchRoutes = require("./routes/search.routes");
 
 const app = express();
 const server = http.createServer(app);
@@ -84,7 +85,13 @@ if (!MONGO_URI) {
 
 mongoose
   .connect(MONGO_URI)
-  .then(() => {})
+  .then(async () => {
+    const visitanteSearchService = require('./services/visitante-search.service');
+    const cassandraService = require('./services/cassandra.service');
+
+    await visitanteSearchService.init();
+    await cassandraService.init();
+  })
   .catch((err) => {
     process.exit(1);
   });
@@ -103,6 +110,7 @@ app.use("/api/notifications", notificationRoutes);
 app.use("/api/devices", playerRegistryRoutes);
 app.use("/api/qr-puerta", qrPuertaRoutes);
 app.use("/api/analytics", analyticsRoutes);
+app.use("/api/search", searchRoutes);
 
 app.get("/api/ping", (req, res) => {
   res.status(200).json({
